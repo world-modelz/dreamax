@@ -70,16 +70,17 @@ class ReplayBuffer:
         for k in ['observation', 'terminal', 'reward']:
             episode[k] = episode[k][:, 1:]
         episode['action'] = episode['action'][:, :-1]
+        return episode
 
     def store(self, transition: Transition):
         episode_end = (transition['terminal'] or transition['info'].get(
             'TimeLimit.truncated', False))
-        for k, v in self.current_episode.item():
+        for k, v in self.current_episode.items():
             v.append(transition[k])
         if episode_end:
             self.current_episode['observation'].append(
                 transition['next_observation'])
-            episode = {k: np.asarry(v)
+            episode = {k: np.asarray(v)
                        for k, v in self.current_episode.items()}
             episode['observation'] = quantize(episode['observation'])
             new_idx = self.buffer.add_sequence(
