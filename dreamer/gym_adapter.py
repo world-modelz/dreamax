@@ -1,15 +1,14 @@
+import gym
 import numpy as np
 from PIL import Image
-import gym
-from gym import Wrapper, ObservationWrapper
-from gym.wrappers import RescaleAction
-from gym.spaces.box import Box
 from dm_control import suite
+from gym import Wrapper, ObservationWrapper
+from gym.spaces.box import Box
+from gym.wrappers import RescaleAction
 
 
 def create_env(domain, task, episode_length, action_repeat, seed):
-    env = suite.load(
-        domain, task, environment_kwargs=dict(flat_observation=True))
+    env = suite.load(domain, task, environment_kwargs=dict(flat_observation=True))
     env = DeepMindSuiteAdapter(env)
     env = gym.wrappers.TimeLimit(env, max_episode_steps=episode_length)
     render_kwargs = dict(height=64, width=64, camera_id=0)
@@ -81,8 +80,10 @@ class RenderedObservation(ObservationWrapper):
     def observation(self, _):
         image = self.env.render(**self._render_kwargs)
         image = Image.fromarray(image)
+
         if image.size != self._size:
             image = image.resize(self._size, Image.BILINEAR)
+
         image = np.array(image, copy=False)
         image = np.clip(image, 0, 255).astype(np.float32)
         image = image / 255.0 - 0.5

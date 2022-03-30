@@ -1,54 +1,70 @@
+import typing
 import json
-import dataclasses
-from dataclasses import dataclass
 from typing import Tuple
 
 
-@dataclass
-class ReplayBufferConfig:
-    capacity: int = 1000,
-    batch: int = 32
+class Dataclass:
+    def __init__(self, config: typing.Dict[str, typing.Any] = None):
+        super().__init__()
+
+        for parent in self.__class__.__mro__[::-1][2:]:
+            self.__dict__.update({k: parent.__dict__[k] for k in parent.__annotations__.keys()})
+
+        self.update(config)
+
+    def update(self, config: typing.Dict[str, typing.Any]):
+        if config is not None:
+            for k, v in config.items():
+                if k in self.__dict__:
+                    if isinstance(self.__dict__[k], Dataclass):
+                        self.__dict__[k].update(v)
+                    else:
+                        self.__dict__[k] = v
+
+                else:
+                    print(f"WARNING: Unknown Config Parameter {k}={v!r} for object {type(self)}")
+
+
+class ReplayBufferConfig(Dataclass):
+
+    capacity: int = 1000
+    batch_size: int = 32
     sequence_length: int = 50
+    precision: int = 32
+    seed: int = None
 
 
-@dataclass
-class OptimizerConfig:
+class OptimizerConfig(Dataclass):
     lr: float = 6e-4,
     eps: float = 1e-7,
     clip: float = 100
 
 
-@dataclass
-class RssmConfig:
+class RssmConfig(Dataclass):
     hidden: int = 200,
     deterministic_size: int = 200
     stochastic_size: int = 30
 
 
-@dataclass
-class EncoderConfig:
+class EncoderConfig(Dataclass):
     depth: int = 32
     kernels: Tuple[int] = (4, 4, 4, 4)
 
 
-@dataclass
-class DecoderConfig:
+class DecoderConfig(Dataclass):
     depth: int = 32
     kernels: Tuple[int] = (5, 5, 6, 6)
 
 
-@dataclass
-class OutputHeadConfigBase:
+class OutputHeadConfigBase(Dataclass):
     output_sizes: Tuple[int] = (400, 400)
 
 
-@dataclass
 class ActorConfig(OutputHeadConfigBase):
     min_stddev: float = 1e-4
 
 
-@dataclass
-class DreamerConfiguration:
+class DreamerConfiguration(Dataclass):
     log_dir: str = "results"
     seed: int = 0
     task: str = "pendulum.swingup"
@@ -77,34 +93,19 @@ class DreamerConfiguration:
     encoder: EncoderConfig = EncoderConfig()
     decoder: DecoderConfig = DecoderConfig()
 
-    reward: OutputHeadConfigBase = OutputHeadConfigBase(
-        output_sizes=(400, 400))
-    terminal: OutputHeadConfigBase = OutputHeadConfigBase(
-        output_sizes=(400, 400, 400))
+    reward: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400)})
+    terminal: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400, 400)})
 
-    actor: ActorConfig = ActorConfig(output_sizes=(400, 400, 400, 400))
+    actor: ActorConfig = ActorConfig({'output_sizes': (400, 400, 400, 400)})
 
-    critic: OutputHeadConfigBase = OutputHeadConfigBase(
-        output_sizes=(400, 400, 400))
+    critic: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400, 400)})
 
-    actor_opt: OptimizerConfig = OptimizerConfig(lr=8e-5, eps=1e-7, clip=100)
-    critic_opt: OptimizerConfig = OptimizerConfig(lr=8e-5, eps=1e-7, clip=100)
+    actor_opt: OptimizerConfig = OptimizerConfig({'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
+    critic_opt: OptimizerConfig = OptimizerConfig({'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
 
 
-def read_section(data: dict, config_type: type = DreamerConfiguration):
-    fields = {f.name: f for f in dataclasses.fields(config_type)}
-    d = config_type()
-    for k, v in data.items():
-        f = fields.get(k)
-        if f is None:
-            raise RuntimeError(f'Configuration value "{k}" not supported.')
-        if dataclasses.is_dataclass(f.type):
-            v = read_section(v, f.type)
-        d.__setattr__(k, v)
-    return d
-
-
-def load_configuration_file(file_path) -> dict[str, DreamerConfiguration]:
+def load_configuration_file(file_path) -> DreamerConfiguration:
     with open(file_path, 'r') as f:
-        data = json.load(f)
-        return {config_name: read_section(data[config_name]) for config_name in data}
+        config = json.load(f)
+
+    return DreamerConfiguration(config)

@@ -4,6 +4,7 @@ import gym
 import jax
 
 from dreamer.replay_buffer import ReplayBuffer
+from dreamer.configuartion import ReplayBufferConfig
 
 
 def interact(env, episodes, episode_length, buffer):
@@ -27,11 +28,14 @@ def interact(env, episodes, episode_length, buffer):
 class TestReplayBuffer(unittest.TestCase):
     def test_store(self):
         env = gym.make('Pendulum-v1')
+
         episode_length = 10
         episodes = 3
-        capacity = 5
-        buffer = ReplayBuffer(capacity=capacity, observation_space=env.observation_space,
-                              action_space=env.action_space, batch_size=2, sequence_length=4, precision=16, seed=0)
+
+        buffer_config = {'capacity': 5, 'batch_size': 2, 'sequence_length': 4, 'precision': 16, 'seed': 0}
+        buffer_config = ReplayBufferConfig(buffer_config)
+
+        buffer = ReplayBuffer(config=buffer_config, observation_space=env.observation_space, action_space=env.action_space)
         interact(env, episodes, episode_length, buffer)
         self.assertEqual(buffer.idx + 1, episodes)
 
@@ -40,9 +44,11 @@ class TestReplayBuffer(unittest.TestCase):
             env = gym.make('Pendulum-v1')
             episode_length = 10
             episodes = 3
-            capacity = 5
-            buffer = ReplayBuffer(capacity=capacity, observation_space=env.observation_space,
-                                  action_space=env.action_space, batch_size=2, sequence_length=4, precision=16, seed=0)
+
+            buffer_config = {'capacity': 5, 'batch_size': 2, 'sequence_length': 4, 'precision': 16, 'seed': 0}
+            buffer_config = ReplayBufferConfig(buffer_config)
+
+            buffer = ReplayBuffer(config=buffer_config, observation_space=env.observation_space, action_space=env.action_space)
             interact(env, episodes, episode_length, buffer)
             samples = list(buffer.sample(2))
             self.assertEqual(len(samples), 2)

@@ -6,6 +6,8 @@ import tensorflow_datasets as tfds
 from gym.spaces import Space
 from tf_agents.replay_buffers import episodic_replay_buffer
 
+from dreamer.configuartion import ReplayBufferConfig
+
 Transition = Dict[str, Union[np.ndarray, dict]]
 Batch = Dict[str, np.ndarray]
 
@@ -19,72 +21,50 @@ def quantize(image):
 
 
 class ReplayBuffer:
-    def __init__(
-        self,
-        capacity: int,
-        observation_space: Space,
-        action_space: Space,
-        batch_size: int,
-        sequence_length: int,
-        precision: int,
-        seed: int
-    ):
-        dtype = {16: tf.float16,  32: tf.float32}[precision]
+    def __init__(self, config: ReplayBufferConfig, observation_space: Space, action_space: Space):
 
-        self.sequence_length = sequence_length
-        data_spec = {
-            'observation': tf.TensorSpec(observation_space.shape, tf.uint8),
-            'action': tf.TensorSpec(action_space.shape, dtype),
-            'reward': tf.TensorSpec((), dtype),
-            'terminal': tf.TensorSpec((), dtype)
-        }
-        self.buffer = episodic_replay_buffer.EpisodicReplayBuffer(
-            data_spec,
-            seed=seed,
-            capacity=capacity,
-            buffer_size=1,
-            dataset_drop_remainder=True,
-            completed_only=False,
-            begin_episode_fn=lambda _: True,
-            end_episode_fn=lambda _: True
-        )
-        self.current_episode = {
-            'observation': [],
-            'action': [],
-            'reward': [],
-            'terminal': []
-        }
+        self.config = config
+
+        dtype = {16: tf.float16, 32: tf.float32}[self.config.precision]
+
+        data_spec = {'observation': tf.TensorSpec(observation_space.shape, tf.uint8), 'action': tf.TensorSpec(action_space.shape, dtype),
+                     'reward': tf.TensorSpec((), dtype), 'terminal': tf.TensorSpec((), dtype)}
+
+        self.buffer = episodic_replay_buffer.EpisodicReplayBuffer(data_spec, seed=self.config.seed, capacity=self.config.capacity,
+                                                                  buffer_size=1, dataset_drop_remainder=True,
+                                                                  completed_only=False, begin_episode_fn=lambda _: True,
+                                                                  end_episode_fn=lambda _: True)
+
+        self.current_episode = {'observation': [], 'action': [], 'reward': [], 'terminal': []}
         self.idx = 0
         self.dtype = dtype
-        ds = self.buffer.as_dataset(batch_size, self.sequence_length + 1)
+        ds = self.buffer.as_dataset(self.config.batch_size, self.config.sequence_length + 1)
         ds = ds.map(self._preprocess, tf.data.experimental.AUTOTUNE)
         ds = ds.prefetch(10)
         self.dataset = ds
 
     def _preprocess(self, episode, _):
-        episode['observation'] = preprocess(
-            tf.cast(episode['observation'], self.dtype))
+        episode['observation'] = preprocess(tf.cast(episode['observation'], self.dtype))
         # shift observation, terminals and reward by one timestep, since
         # RSSM uses the *previous* action and state together with the
         # current observation to infer the *current* state
         for k in ['observation', 'terminal', 'reward']:
             episode[k] = episode[k][:, 1:]
+
         episode['action'] = episode['action'][:, :-1]
+
         return episode
 
     def store(self, transition: Transition):
-        episode_end = (transition['terminal'] or transition['info'].get(
-            'TimeLimit.truncated', False))
+        episode_end = (transition['terminal'] or transition['info'].get('TimeLimit.truncated', False))
         for k, v in self.current_episode.items():
             v.append(transition[k])
+
         if episode_end:
-            self.current_episode['observation'].append(
-                transition['next_observation'])
-            episode = {k: np.asarray(v)
-                       for k, v in self.current_episode.items()}
+            self.current_episode['observation'].append(transition['next_observation'])
+            episode = {k: np.asarray(v) for k, v in self.current_episode.items()}
             episode['observation'] = quantize(episode['observation'])
-            new_idx = self.buffer.add_sequence(
-                episode, tf.constant(self.idx, tf.int64))
+            new_idx = self.buffer.add_sequence(episode, tf.constant(self.idx, tf.int64))
             self.idx = int(new_idx)
             self.current_episode = {k: [] for k in self.current_episode.keys()}
 
