@@ -7,8 +7,9 @@ class Dataclass:
     def __init__(self, config: typing.Dict[str, typing.Any] = None, load_with_warning: bool = True):
         super().__init__()
 
-        for parent in self.__class__.__mro__[::-1][2:]:
-            self.__dict__.update({k: parent.__dict__[k] for k in parent.__annotations__.keys()})
+        for parent in self.__class__.__mro__[::-1]:
+            if hasattr(parent, '__annotations__'):
+                self.__dict__.update({k: parent.__dict__[k] for k in parent.__annotations__.keys()})
 
         self.update(config, load_with_warning)
 
@@ -29,7 +30,6 @@ class Dataclass:
 
 
 class ReplayBufferConfig(Dataclass):
-
     capacity: int = 1000
     batch_size: int = 32
     sequence_length: int = 50
