@@ -4,16 +4,16 @@ from typing import Tuple
 
 
 class Dataclass:
-    def __init__(self, config: typing.Dict[str, typing.Any] = None):
+    def __init__(self, config: typing.Dict[str, typing.Any] = None, load_with_warning: bool = True):
         super().__init__()
 
         for parent in self.__class__.__mro__[::-1][2:]:
             self.__dict__.update(
                 {k: parent.__dict__[k] for k in parent.__annotations__.keys()})
 
-        self.update(config)
+        self.update(config, load_with_warning)
 
-    def update(self, config: typing.Dict[str, typing.Any]):
+    def update(self, config: typing.Dict[str, typing.Any], load_with_warning: bool = True):
         if config is not None:
             for k, v in config.items():
                 if k in self.__dict__:
@@ -22,8 +22,10 @@ class Dataclass:
                     else:
                         self.__dict__[k] = v
                 else:
-                    print(
-                        f"WARNING: Unknown config parameter {k}={v!r} for section {type(self)}")
+                    if load_with_warning:
+                        print(f"WARNING: Unknown config parameter {k}={v!r} for section {type(self)}")
+                    else:
+                        raise ValueError(f"Unknown config parameter {k}={v!r} for section {type(self)}")
 
 
 class ReplayBufferConfig(Dataclass):

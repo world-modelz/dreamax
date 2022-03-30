@@ -9,7 +9,7 @@
     "render_episodes": 0,
     "replay": {
         "capacity": 10,
-        "batch": 10,
+        "batch_size": 10,
         "sequence_length": 8
     }
 }
