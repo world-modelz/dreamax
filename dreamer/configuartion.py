@@ -8,7 +8,8 @@ class Dataclass:
         super().__init__()
 
         for parent in self.__class__.__mro__[::-1][2:]:
-            self.__dict__.update({k: parent.__dict__[k] for k in parent.__annotations__.keys()})
+            self.__dict__.update(
+                {k: parent.__dict__[k] for k in parent.__annotations__.keys()})
 
         self.update(config)
 
@@ -20,13 +21,12 @@ class Dataclass:
                         self.__dict__[k].update(v)
                     else:
                         self.__dict__[k] = v
-
                 else:
-                    print(f"WARNING: Unknown Config Parameter {k}={v!r} for object {type(self)}")
+                    print(
+                        f"WARNING: Unknown config parameter {k}={v!r} for section {type(self)}")
 
 
 class ReplayBufferConfig(Dataclass):
-
     capacity: int = 1000
     batch_size: int = 32
     sequence_length: int = 50
@@ -79,9 +79,9 @@ class DreamerConfiguration(Dataclass):
     replay: ReplayBufferConfig = ReplayBufferConfig()
     jit: bool = True
     render_episodes: int = 0
-    evaluate_model: bool = True,
-    precision: int = 16,
-    initialization: str = "glorot",
+    evaluate_model: bool = True
+    precision: int = 16
+    initialization: str = "glorot"
     rssm: RssmConfig = RssmConfig()
     model_opt: OptimizerConfig = OptimizerConfig()
     discount: float = 0.99
@@ -89,19 +89,19 @@ class DreamerConfiguration(Dataclass):
     imag_horizon: int = 15
     free_kl: float = 3.0
     kl_scale: float = 1.0
-
     encoder: EncoderConfig = EncoderConfig()
     decoder: DecoderConfig = DecoderConfig()
-
-    reward: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400)})
-    terminal: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400, 400)})
-
+    reward: OutputHeadConfigBase = OutputHeadConfigBase(
+        {'output_sizes': (400, 400)})
+    terminal: OutputHeadConfigBase = OutputHeadConfigBase(
+        {'output_sizes': (400, 400, 400)})
     actor: ActorConfig = ActorConfig({'output_sizes': (400, 400, 400, 400)})
-
-    critic: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400, 400)})
-
-    actor_opt: OptimizerConfig = OptimizerConfig({'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
-    critic_opt: OptimizerConfig = OptimizerConfig({'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
+    critic: OutputHeadConfigBase = OutputHeadConfigBase(
+        {'output_sizes': (400, 400, 400)})
+    actor_opt: OptimizerConfig = OptimizerConfig(
+        {'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
+    critic_opt: OptimizerConfig = OptimizerConfig(
+        {'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
 
 
 def load_configuration_file(file_path) -> DreamerConfiguration:
