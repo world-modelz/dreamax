@@ -53,5 +53,5 @@ class TestConfiguration(unittest.TestCase):
 
         for config_path in config_paths:
             config = DreamerConfiguration(
-                json.load(open(config_path)), load_with_warning=False)
+                json.load(open(config_path, 'r')), load_with_warning=False)
             del config

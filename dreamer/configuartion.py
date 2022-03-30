@@ -39,7 +39,7 @@ class ReplayBufferConfig(Dataclass):
 
 class OptimizerConfig(Dataclass):
     lr: float = 6e-4,
-    eps: float = 1e-7,
+    eps: float = 1e-7
     clip: float = 100
 
 
