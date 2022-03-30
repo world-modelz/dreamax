@@ -1,10 +1,9 @@
-import typing
 import json
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 
 class Dataclass:
-    def __init__(self, config: typing.Dict[str, typing.Any] = None, load_with_warning: bool = True):
+    def __init__(self, config: Dict[str, Any] = None, load_with_warning: bool = True):
         super().__init__()
 
         for parent in self.__class__.__mro__[::-1][2:]:
@@ -13,7 +12,7 @@ class Dataclass:
 
         self.update(config, load_with_warning)
 
-    def update(self, config: typing.Dict[str, typing.Any], load_with_warning: bool = True):
+    def update(self, config: Dict[str, Any], load_with_warning: bool = True):
         if config is not None:
             for k, v in config.items():
                 if k in self.__dict__:
@@ -23,9 +22,11 @@ class Dataclass:
                         self.__dict__[k] = v
                 else:
                     if load_with_warning:
-                        print(f"WARNING: Unknown config parameter {k}={v!r} for section {type(self)}")
+                        print(
+                            f"WARNING: Unknown config parameter {k}={v!r} for section {type(self)}")
                     else:
-                        raise ValueError(f"Unknown config parameter {k}={v!r} for section {type(self)}")
+                        raise ValueError(
+                            f"Unknown config parameter {k}={v!r} for section {type(self)}")
 
 
 class ReplayBufferConfig(Dataclass):

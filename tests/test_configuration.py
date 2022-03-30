@@ -12,7 +12,6 @@ class TestConfiguration(unittest.TestCase):
             a: int = 5
             b: list = [7, 7]
 
-
         class Test_b(Test_a):
             a: int = 33
             x: Test_a = Test_a()
@@ -53,7 +52,6 @@ class TestConfiguration(unittest.TestCase):
         config_paths = glob.glob('../configs/*.json')
 
         for config_path in config_paths:
-            config = DreamerConfiguration(json.load(open(config_path)), load_with_warning=False)
+            config = DreamerConfiguration(
+                json.load(open(config_path)), load_with_warning=False)
             del config
-
-
