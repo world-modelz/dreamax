@@ -1,19 +1,19 @@
-import typing
 import json
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 
 class Dataclass:
-    def __init__(self, config: typing.Dict[str, typing.Any] = None, load_with_warning: bool = True):
+    def __init__(self, config: Dict[str, Any] = None, load_with_warning: bool = True):
         super().__init__()
 
         for parent in self.__class__.__mro__[::-1]:
             if hasattr(parent, '__annotations__'):
-                self.__dict__.update({k: parent.__dict__[k] for k in parent.__annotations__.keys()})
+                self.__dict__.update(
+                    {k: parent.__dict__[k] for k in parent.__annotations__.keys()})
 
         self.update(config, load_with_warning)
 
-    def update(self, config: typing.Dict[str, typing.Any], load_with_warning: bool = True):
+    def update(self, config: Dict[str, Any], load_with_warning: bool = True):
         if config is not None:
             for k, v in config.items():
                 if k in self.__dict__:
@@ -21,12 +21,13 @@ class Dataclass:
                         self.__dict__[k].update(v)
                     else:
                         self.__dict__[k] = v
-
                 else:
                     if load_with_warning:
-                        print(f"WARNING: Unknown Config Parameter {k}={v!r} for object {type(self)}")
+                        print(
+                            f"WARNING: Unknown config parameter {k}={v!r} for section {type(self)}")
                     else:
-                        raise ValueError(f"Unknown Config Parameter {k}={v!r} for object {type(self)}")
+                        raise ValueError(
+                            f"Unknown config parameter {k}={v!r} for section {type(self)}")
 
 
 class ReplayBufferConfig(Dataclass):
@@ -82,9 +83,9 @@ class DreamerConfiguration(Dataclass):
     replay: ReplayBufferConfig = ReplayBufferConfig()
     jit: bool = True
     render_episodes: int = 0
-    evaluate_model: bool = True,
-    precision: int = 16,
-    initialization: str = "glorot",
+    evaluate_model: bool = True
+    precision: int = 16
+    initialization: str = "glorot"
     rssm: RssmConfig = RssmConfig()
     model_opt: OptimizerConfig = OptimizerConfig()
     discount: float = 0.99
@@ -92,19 +93,19 @@ class DreamerConfiguration(Dataclass):
     imag_horizon: int = 15
     free_kl: float = 3.0
     kl_scale: float = 1.0
-
     encoder: EncoderConfig = EncoderConfig()
     decoder: DecoderConfig = DecoderConfig()
-
-    reward: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400)})
-    terminal: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400, 400)})
-
+    reward: OutputHeadConfigBase = OutputHeadConfigBase(
+        {'output_sizes': (400, 400)})
+    terminal: OutputHeadConfigBase = OutputHeadConfigBase(
+        {'output_sizes': (400, 400, 400)})
     actor: ActorConfig = ActorConfig({'output_sizes': (400, 400, 400, 400)})
-
-    critic: OutputHeadConfigBase = OutputHeadConfigBase({'output_sizes': (400, 400, 400)})
-
-    actor_opt: OptimizerConfig = OptimizerConfig({'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
-    critic_opt: OptimizerConfig = OptimizerConfig({'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
+    critic: OutputHeadConfigBase = OutputHeadConfigBase(
+        {'output_sizes': (400, 400, 400)})
+    actor_opt: OptimizerConfig = OptimizerConfig(
+        {'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
+    critic_opt: OptimizerConfig = OptimizerConfig(
+        {'lr': 8e-5, 'eps': 1e-7, 'clip': 100})
 
 
 def load_configuration_file(file_path) -> DreamerConfiguration:
