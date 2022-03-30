@@ -1,5 +1,8 @@
 import unittest
-from dreamer.configuartion import Dataclass
+import glob
+import json
+
+from dreamer.configuartion import Dataclass, DreamerConfiguration
 
 
 class TestConfiguration(unittest.TestCase):
@@ -44,5 +47,13 @@ class TestConfiguration(unittest.TestCase):
         self.assertListEqual(test_b.b, [2, 3])
         self.assertEqual(test_b.x.a, 7)
         self.assertListEqual(test_b.x.b, [1, 2, 3, 4, 5, 6])
+
+    def test_load_default_configs(self):
+
+        config_paths = glob.glob('../configs/*.json')
+
+        for config_path in config_paths:
+            config = DreamerConfiguration(json.load(open(config_path)), load_with_warning=False)
+            del config
 
 
