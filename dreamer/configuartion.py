@@ -39,13 +39,13 @@ class ReplayBufferConfig(Dataclass):
 
 
 class OptimizerConfig(Dataclass):
-    lr: float = 6e-4,
-    eps: float = 1e-7,
+    lr: float = 6e-4
+    eps: float = 1e-7
     clip: float = 100
 
 
 class RssmConfig(Dataclass):
-    hidden: int = 200,
+    hidden: int = 200
     deterministic_size: int = 200
     stochastic_size: int = 30
 
