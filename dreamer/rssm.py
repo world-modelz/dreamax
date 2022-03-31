@@ -52,9 +52,10 @@ class Posterior(hk.Module):
     def __call__(self, prev_state: State, observation: Observation) -> Tuple[tfd.MultivariateNormalDiag, State]:
         _, det = prev_state
         cat = jnp.concatenate([det, observation], -1)
-        x = jnn.elu(hk.Linear(self.c.hidden, name='h1', w_init=initializer(self.initialization))(cat))
+        x = jnn.elu(hk.Linear(self.c.hidden, name='h1',
+                    w_init=initializer(self.initialization))(cat))
         x = hk.Linear(self.c.stochastic_size * 2, name='h2',
-                    w_init=initializer(self.initialization))(x)
+                      w_init=initializer(self.initialization))(x)
         mean, stddev = jnp.split(x, 2, -1)
         stddev = jnn.softplus(stddev) + 0.1
         posterior = tfd.MultivariateNormalDiag(mean, stddev)
@@ -79,12 +80,23 @@ class RSSM(hk.Module):
         self.prior = Prior(config.rssm, config.initialization)
         self.posterior = Posterior(config.rssm, config.initialization)
 
-    def __call__(self, prev_state: State, prev_action: Action, observation: Observation) -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], State]:
+    def __call__(
+        self,
+        prev_state: State,
+        prev_action: Action,
+        observation: Observation
+    ) -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], State]:
         prior, state = self.prior(prev_state, prev_action)
         posterior, state = self.posterior(state, observation)
         return (prior, posterior), state
 
-    def generate_sequence(self, initial_features: jnp.ndarray, actor: hk.Transformed, actor_params: hk.Params, actions=None) -> jnp.ndarray:
+    def generate_sequence(
+        self,
+        initial_features: jnp.ndarray,
+        actor: hk.Transformed,
+        actor_params: hk.Params,
+        actions=None
+    ) -> jnp.ndarray:
         def vec(state):
             return jnp.concatenate(state, -1)
 
@@ -98,6 +110,7 @@ class RSSM(hk.Module):
         for t, key in enumerate(keys):
             action = actor.apply(
                 actor_params,
+                key,
                 jax.lax.stop_gradient(vec(state))
             ).sample(seed=key) if actions is None else actions[:, t]
             _, state = self.prior(state, action)
@@ -105,7 +118,9 @@ class RSSM(hk.Module):
         return sequence
 
     def observe_sequence(
-        self, observations: Observation, actions: Action
+        self,
+        observations: Observation,
+        actions: Action
     ) -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], jnp.ndarray]:
         priors, posteriors = [], []
         features = jnp.zeros(
@@ -122,7 +137,7 @@ class RSSM(hk.Module):
         def joint_mvn(dists):
             mus, stddevs = jnp.asarray(
                 list(zip(*dists))).transpose((0, 2, 1, 3))
-            return tfd.MutlivariateNormalDiag(mus, stddevs)
+            return tfd.MultivariateNormalDiag(mus, stddevs)
 
         prior = joint_mvn(priors)
         posterior = joint_mvn(posteriors)

@@ -1,6 +1,7 @@
 dm-haiku==0.0.6
 jax==0.3.4
 jaxlib==0.3.2+cuda11.cudnn82
+optax==0.1.1
 numpy==1.22.3
 Pillow==9.0.1
 scipy==1.8.0
