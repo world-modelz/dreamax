@@ -52,8 +52,9 @@ class Posterior(hk.Module):
     def __call__(self, prev_state: State, observation: Observation) -> Tuple[tfd.MultivariateNormalDiag, State]:
         _, det = prev_state
         cat = jnp.concatenate([det, observation], -1)
-        x = jnn.elu(hk.Linear(self.c.hidden, name='h1',
-                    w_init=initializer(self.initialization))(x))
+        x = jnn.elu(hk.Linear(self.c.hidden, name='h1', w_init=initializer(self.initialization))(cat))
+        x = hk.Linear(self.c.stochastic_size * 2, name='h2',
+                    w_init=initializer(self.initialization))(x)
         mean, stddev = jnp.split(x, 2, -1)
         stddev = jnn.softplus(stddev) + 0.1
         posterior = tfd.MultivariateNormalDiag(mean, stddev)
@@ -61,7 +62,12 @@ class Posterior(hk.Module):
         return posterior, (sample, det)
 
 
-def init_state(batch_size: int, stochastic_size: int, deterministic_size: int, dtype: Optional[jnp.dtype] = jnp.float32) -> State:
+def init_state(
+    batch_size: int,
+    stochastic_size: int,
+    deterministic_size: int,
+    dtype: Optional[jnp.dtype] = jnp.float32
+) -> State:
     return (jnp.zeros((batch_size, stochastic_size), dtype),
             jnp.zeros((batch_size, deterministic_size), dtype))
 
