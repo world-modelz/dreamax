@@ -30,7 +30,7 @@ class Encoder(hk.Module):
                         stride=2,
                         padding='VALID',
                         w_init=initializer(self.initialization)
-                    )
+                    )(x)
                 )
             return x
 
