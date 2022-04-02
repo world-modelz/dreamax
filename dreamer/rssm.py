@@ -16,7 +16,7 @@ Action = jnp.ndarray
 Observation = jnp.ndarray
 
 
-class Z_Head_Layer(hk.Module):
+class ZHeadLayer(hk.Module):
     def __init__(self, config: RssmConfig, initialization: str):
         super().__init__()
         self.config = config
@@ -31,7 +31,8 @@ class Z_Head_Layer(hk.Module):
         x = hk.Linear(self.config.deterministic_size, name='h1', w_init=initializer(self.initialization))(cat)
         x = jnn.elu(x)
 
-        x, det = hk.GRU(self.config.deterministic_size, w_i_init=initializer(self.initialization), w_h_init=hk.initializers.Orthogonal())(x, det)
+        x, det = hk.GRU(self.config.deterministic_size, w_i_init=initializer(
+            self.initialization), w_h_init=hk.initializers.Orthogonal())(x, det)
 
         x = hk.Linear(self.config.hidden, name='h2', w_init=initializer(self.initialization))(x)
         x = jnn.elu(x)
@@ -45,13 +46,13 @@ class Z_Head_Layer(hk.Module):
         # Sample from Dist
         sample = z_head_dist.sample(seed=hk.next_rng_key())
 
-        # stack state
+        # Stack state
         state = (sample, det)
 
         return z_head_dist, state
 
 
-class Z_Layer(hk.Module):
+class ZLayer(hk.Module):
     def __init__(self, config: RssmConfig, inititialization: str):
         super().__init__()
 
@@ -76,13 +77,14 @@ class Z_Layer(hk.Module):
         # Sample from Dist
         z_sample = z_dist.sample(seed=hk.next_rng_key())
 
-        # stack state
+        # Stack state
         state = (z_sample, det)
 
         return z_dist, state
 
 
-def init_state(batch_size: int, stochastic_size: int, deterministic_size: int, dtype: Optional[jnp.dtype] = jnp.float32) -> State:
+def init_state(batch_size: int, stochastic_size: int, deterministic_size: int,
+               dtype: Optional[jnp.dtype] = jnp.float32) -> State:
     return (jnp.zeros((batch_size, stochastic_size), dtype), jnp.zeros((batch_size, deterministic_size), dtype))
 
 
@@ -91,21 +93,30 @@ class RSSM(hk.Module):
         super().__init__()
 
         self.config = config
-        self.z_head = Z_Head_Layer(config.rssm, config.initialization)
-        self.z_ = Z_Layer(config.rssm, config.initialization)
+        self.z_head = ZHeadLayer(config.rssm, config.initialization)
+        self.z = ZLayer(config.rssm, config.initialization)
 
     def __call__(self, prev_state: State, prev_action: Action, observation: Observation) \
             -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], State]:
 
         z_head_dist, state = self.z_head(prev_state, prev_action)
-        z_dist, state = self.z_(state, observation)
+        z_dist, state = self.z(state, observation)
 
         return (z_head_dist, z_dist), state
 
-    def generate_sequence(self, initial_features: jnp.ndarray, actor: hk.Transformed, actor_params: hk.Params, actions=None) -> jnp.ndarray:
+    def generate_sequence(
+            self,
+            initial_features: jnp.ndarray,
+            actor: hk.Transformed,
+            actor_params: hk.Params,
+            actions=None) -> jnp.ndarray:
 
         horizon = self.config.imag_horizon if actions is None else actions.shape[1]
-        sequence = jnp.zeros((initial_features.shape[0], horizon, self.config.rssm.stochastic_size + self.config.rssm.deterministic_size))
+        sequence = jnp.zeros(
+            (initial_features.shape[0],
+             horizon,
+             self.config.rssm.stochastic_size +
+             self.config.rssm.deterministic_size))
         state = jnp.split(initial_features, (self.config.rssm.stochastic_size,), -1)
         keys = hk.next_rng_keys(horizon)
 
@@ -131,7 +142,9 @@ class RSSM(hk.Module):
             -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], jnp.ndarray]:
 
         z_heads, z_s = [], []
-        features = jnp.zeros(observations.shape[:2] + (self.config.rssm.stochastic_size + self.config.rssm.deterministic_size,))
+        features = jnp.zeros(observations.shape[:2] +
+                             (self.config.rssm.stochastic_size +
+                              self.config.rssm.deterministic_size,))
         state = init_state(observations.shape[0], self.config.rssm.stochastic_size, self.config.rssm.deterministic_size)
 
         # Unroll over sequenz
@@ -142,15 +155,15 @@ class RSSM(hk.Module):
             z_heads.append((z_head_dist.mean(), z_head_dist.stddev()))
             z_s.append((z_dist.mean(), z_dist.stddev()))
 
-            # Set features at time stap t
+            # Set features at time step t
             features = features.at[:, t].set(jnp.concatenate(state, -1))
 
         def joint_mvn(dists):
             mus, stddevs = jnp.asarray(list(zip(*dists))).transpose((0, 2, 1, 3))
             return tfd.MultivariateNormalDiag(mus, stddevs)
 
-        # Stack unroald mean and stddev
-        z_head = joint_mvn(z_heads)
-        z_ = joint_mvn(z_s)
+        # Stack unrolled mean and stddev
+        z_head_stack = joint_mvn(z_heads)
+        z_stack = joint_mvn(z_s)
 
-        return (z_head, z_), features
+        return (z_head_stack, z_stack), features
