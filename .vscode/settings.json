@@ -1,3 +1,6 @@
 {
-    "python.formatting.provider": "autopep8"
+    "python.formatting.provider": "autopep8",
+    "python.formatting.autopep8Args": [
+        "--in-place --aggressive --max-line-length 120 --aggressive --pep8-passes 10"
+    ]
 }
