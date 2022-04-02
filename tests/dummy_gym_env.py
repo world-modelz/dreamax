@@ -1,12 +1,10 @@
 import typing
-import numpy as np
-import jax
-from jax import numpy as jnp
 import random
+import numpy as np
 import gym
 
 
-class Dummy_Gym_env(gym.Env):
+class DummyGymEnv(gym.Env):
 
     def __init__(self, observation_space: typing.Union[gym.Space, typing.List[gym.Space]],
                  action_space: typing.Union[gym.Space, typing.List[gym.Space]]):
@@ -22,7 +20,6 @@ class Dummy_Gym_env(gym.Env):
 
         return obs
 
-
     def step(self, action):
 
         obs = self.reset()
@@ -32,6 +29,3 @@ class Dummy_Gym_env(gym.Env):
 
         # obs, rewards, done, info
         return obs, reward, done, info
-
-
-
