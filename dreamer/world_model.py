@@ -56,7 +56,7 @@ class Decoder(hk.Module):
         x = hk.BatchApply(
             hk.Linear(32 * self.depth, w_init=initializer(self.initialization))
         )(features)
-        x = hk.Reshape((1, 1, 32 * self._depth), 2)(x)
+        x = hk.Reshape((1, 1, 32 * self.depth), 2)(x)
 
         def transpose_cnn(x):
             for i, kernel in enumerate(self.kernels):
