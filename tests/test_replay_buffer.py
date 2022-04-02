@@ -3,6 +3,8 @@ import numpy as np
 import gym
 import jax
 
+from tests.utils import Dummy_Gym_env
+
 from dreamer.replay_buffer import ReplayBuffer
 from dreamer.configuartion import ReplayBufferConfig
 
@@ -27,7 +29,8 @@ def interact(env, episodes, episode_length, buffer):
 
 class TestReplayBuffer(unittest.TestCase):
     def test_store(self):
-        env = gym.make('Pendulum-v1')
+        env = Dummy_Gym_env(observation_space=gym.spaces.Box(-np.inf, np.inf, (64, 64, 3), dtype=np.float32),
+                            action_space=gym.spaces.Box(np.array([-1, -1, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1]), dtype=np.float32))
 
         episode_length = 10
         episodes = 3
@@ -41,7 +44,10 @@ class TestReplayBuffer(unittest.TestCase):
 
     def test_sample(self):
         with jax.disable_jit():
-            env = gym.make('Pendulum-v1')
+
+            env = Dummy_Gym_env(observation_space=gym.spaces.Box(-np.inf, np.inf, (64, 64, 3), dtype=np.float32),
+                                action_space=gym.spaces.Box(np.array([-1, -1, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1]), dtype=np.float32))
+
             episode_length = 10
             episodes = 3
 
