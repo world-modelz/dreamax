@@ -79,10 +79,12 @@ class Decoder(hk.Module):
                         padding='VALID',
                         w_init=initializer(self.initialization)
                     )(x)
-            out = hk.BatchApply(transpose_cnn)(x)
-            return tfd.Independent(
-                tfd.Normal(out, 1.0), len(self.output_shape)
-            )
+            return x
+
+        out = hk.BatchApply(transpose_cnn)(x)
+        return tfd.Independent(
+            tfd.Normal(out, 1.0), len(self.output_shape)
+        )
 
 
 class DenseDecoder(hk.Module):

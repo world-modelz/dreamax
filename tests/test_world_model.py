@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 import haiku as hk
 import jax
+import jax.numpy as jnp
 
 from dreamer.configuartion import DreamerConfiguration
 from dreamer.world_model import WorldModel
@@ -77,7 +78,7 @@ class TestWorldModel(unittest.TestCase):
         _, generate, *_ = f.model.apply
         features, reward, terminal = generate(
             f.params, f.rng_split(),
-            f.dummy_state, f.policy, f.policy_params
+            jnp.concatenate(f.dummy_state, -1), f.policy, f.policy_params
         )
         self.assertEqual(features.shape, (3, f.config.imag_horizon, 36))
         self.assertEqual(reward.event_shape, ())
@@ -90,7 +91,8 @@ class TestWorldModel(unittest.TestCase):
         f = Fixture2()
         _, _, infer, _ = f.model.apply
         (prior, posterior), features, decoded, reward, terminal = infer(
-            f.params, f.rng_split(), f.dummy_observations, f.dummy_actions
+            f.params, f.rng_split(),
+            f.dummy_observations, f.dummy_actions
         )
         self.assertEqual(prior.event_shape, (4,))
         self.assertEqual(prior.batch_shape, (3, 15))
