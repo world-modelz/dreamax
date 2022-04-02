@@ -45,7 +45,7 @@ class TestReplayBuffer(unittest.TestCase):
     def test_sample(self):
         with jax.disable_jit():
 
-            env = Dummy_Gym_env(observation_space=gym.spaces.Box(-np.inf, np.inf, (64, 64, 3), dtype=np.float32),
+            env = Dummy_Gym_env(observation_space=gym.spaces.Box(-np.inf, np.inf, (3, ), dtype=np.float32),
                                 action_space=gym.spaces.Box(np.array([-1, -1, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1]), dtype=np.float32))
 
             episode_length = 10
