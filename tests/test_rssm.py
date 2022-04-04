@@ -1,6 +1,6 @@
 from mimetypes import init
 from dreamer.rssm import RSSM
-from dreamer.configuartion import DreamerConfiguration, RssmConfig
+from dreamer.configuration import DreamerConfiguration, RssmConfig
 import unittest
 
 import haiku as hk

@@ -14,7 +14,7 @@ import optax
 from tensorflow_probability.substrates import jax as tfp
 from tqdm import tqdm
 
-from dreamer.configuartion import DreamerConfiguration
+from dreamer.configuration import DreamerConfiguration
 from dreamer.learner import Learner, LearningState
 from dreamer.replay_buffer import ReplayBuffer
 from dreamer.rssm import Observation, init_state

@@ -5,7 +5,7 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-from dreamer.configuartion import DreamerConfiguration
+from dreamer.configuration import DreamerConfiguration
 from dreamer.world_model import WorldModel
 
 from tests.test_rssm import Fixture

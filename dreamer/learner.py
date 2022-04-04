@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import jmp
 import optax
 
-from configuartion import OptimizerConfig
+from dreamer.configuration import OptimizerConfig
 
 PRNGKey = jnp.ndarray
 LearningState = Tuple[hk.Params, optax.OptState]

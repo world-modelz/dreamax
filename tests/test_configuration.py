@@ -2,7 +2,7 @@ import unittest
 import glob
 import json
 
-from dreamer.configuartion import Dataclass, DreamerConfiguration
+from dreamer.configuration import Dataclass, DreamerConfiguration
 
 
 class TestConfiguration(unittest.TestCase):

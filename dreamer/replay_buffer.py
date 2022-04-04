@@ -6,7 +6,7 @@ import tensorflow_datasets as tfds
 from gym.spaces import Space
 from tf_agents.replay_buffers import episodic_replay_buffer
 
-from dreamer.configuartion import ReplayBufferConfig
+from dreamer.configuration import ReplayBufferConfig
 
 Transition = Dict[str, Union[np.ndarray, dict]]
 Batch = Dict[str, np.ndarray]

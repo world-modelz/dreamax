@@ -1,5 +1,5 @@
 from dreamer.utils import initializer
-from dreamer.configuartion import DreamerConfiguration, RssmConfig
+from dreamer.configuration import DreamerConfiguration, RssmConfig
 from distutils.command.config import config
 from typing import Tuple, Optional
 

@@ -6,7 +6,7 @@ import jax
 from tests.dummy_gym_env import DummyGymEnv
 
 from dreamer.replay_buffer import ReplayBuffer
-from dreamer.configuartion import ReplayBufferConfig
+from dreamer.configuration import ReplayBufferConfig
 
 
 def interact(env, episodes, episode_length, buffer):

@@ -1,5 +1,5 @@
 from dreamer.rssm import RSSM, ZLayer, State, Action, Observation
-from dreamer.configuartion import DreamerConfiguration
+from dreamer.configuration import DreamerConfiguration
 from typing import Optional, Sequence, Tuple
 from dreamer.utils import initializer
 
