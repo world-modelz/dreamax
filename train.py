@@ -95,7 +95,7 @@ def main():
 
     config = DreamerConfiguration()
     for config_path in args.configs:
-        print('loading configuration: ', config_path)
+        print(f'Loading configuration: "{config_path}"')
         with open(config_path, 'r') as f:
             json_config = json.load(f)
             config.update(json_config, load_with_warning=False)

@@ -112,7 +112,7 @@ class Dreamer:
         _, current_state = filter_(model_params, key, prev_state, prev_action, observation)
         features = jnp.concatenate(current_state, -1)[None]
         policy = self.actor.apply(actor_params, features)
-        action = policy.sample(seed=key) if training else policy.mode(seeq=key)
+        action = policy.sample(seed=key) if training else policy.mode(seed=key)
         return action.squeeze(0), current_state
 
     def observe(self, transition):

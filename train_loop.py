@@ -109,7 +109,7 @@ def evaluate(agent, train_env, logger, config: DreamerConfiguration, steps):
 def on_episode_end(episode_summary, logger, global_step, steps_count):
     episode_return = sum(episode_summary['reward'])
     steps = global_step + steps_count
-    print("\nFinished episode with return: {}".format(episode_return))
+    print(f"\nFinished episode with return: {episode_return:.2f}")
     summary = {'training/episode_return': episode_return}
     logger.log_evaluation_summary(summary, steps)
 
