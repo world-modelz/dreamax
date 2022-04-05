@@ -15,6 +15,7 @@
         "batch_size": 32,
         "sequence_length": 50
     },
+    "platform": "gpu",
     "jit": true,
     "render_episodes": 0,
     "evaluate_model": true,

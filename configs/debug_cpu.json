@@ -1,0 +1,16 @@
+{
+    "jit": false,
+    "platform": "cpu",
+    "time_limit": 100,
+    "training_steps_per_epoch": 200,
+    "evaluation_steps_per_epoch": 0,
+    "prefill": 100,
+    "train_every": 100,
+    "update_steps": 2,
+    "render_episodes": 0,
+    "replay": {
+        "capacity": 10,
+        "batch_size": 10,
+        "sequence_length": 8
+    }
+}

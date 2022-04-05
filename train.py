@@ -1,21 +1,22 @@
 
-import json
+import os
 import argparse
+import json
+import numpy as np
 import gym
 
-import haiku as hk
+import tensorflow as tf
+import jax
 import jax.numpy as jnp
-import numpy as np
+import haiku as hk
 
-from jax.config import config as jax_config
 
-# import dreamer.gym_adapter Gy
-from dreamer.configuration import DreamerConfiguration
-from dreamer.gym_adapter import create_env
-from dreamer.world_model import Actor, DenseDecoder, Decoder, WorldModel
-from dreamer.logger import TrainingLogger
-from dreamer.replay_buffer import ReplayBuffer
 from dreamer.dreamer import Dreamer, get_mixed_precision_policy
+from dreamer.replay_buffer import ReplayBuffer
+from dreamer.logger import TrainingLogger
+from dreamer.world_model import Actor, DenseDecoder, Decoder, WorldModel
+from dreamer.gym_adapter import create_env
+from dreamer.configuration import DreamerConfiguration
 
 
 def create_model(config, observation_space):
@@ -82,6 +83,8 @@ def parse_args():
 
 
 def main():
+    tf.config.experimental.set_visible_devices([], "GPU")
+
     args = parse_args()
 
     config = DreamerConfiguration()
@@ -93,8 +96,14 @@ def main():
 
     np.random.seed(config.seed)
 
+    jax.config.update('jax_platform_name', config.platform)
+
+    print('Available devices:')
+    for d in jax.devices():
+        print(d)
+
     if not config.jit:
-        jax_config.update('jax_disable_jit', True)
+        jax.config.update('jax_disable_jit', True)
 
     if config.precision == 16:
         policy = get_mixed_precision_policy(16)

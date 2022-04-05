@@ -16,7 +16,7 @@ class Dataclass:
     def update(self, config: Dict[str, Any], load_with_warning: bool = True):
         if config is not None:
             for k, v in config.items():
-                if type(v) == list:
+                if isinstance(v, list):
                     v = tuple(v)
                 if k in self.__dict__:
                     if isinstance(self.__dict__[k], Dataclass):
@@ -83,6 +83,7 @@ class DreamerConfiguration(Dataclass):
     train_every: int = 1000
     update_steps: int = 100
     replay: ReplayBufferConfig = ReplayBufferConfig()
+    platform: str = 'gpu'
     jit: bool = True
     render_episodes: int = 0
     evaluate_model: bool = True
