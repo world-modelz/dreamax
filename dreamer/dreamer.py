@@ -93,7 +93,7 @@ class Dreamer:
             training
         )
         self.state = (current_state, action)
-        return np.clip(action.astpye(np.float32), -1, 1)
+        return np.clip(action.astype(np.float32), -1, 1)
 
     @functools.partial(jax.jit, static_argnums=(0, 7))
     def policy(
