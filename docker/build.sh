@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t dreamax:v1 .
+docker build -t dreamax:v2 .

@@ -1,12 +1,12 @@
 #!/bin/bash
 SCRIPT_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
-containerId=dreamax:v1
+containerId=dreamax:v2
 xhost +local:`docker inspect --format='{{ .Config.Hostname }}' $containerId` # opening xhost locally, see http://wiki.ros.org/docker/Tutorials/GUI 
 docker run \
     -it \
     --rm \
     --net=host \
-    --name=jax \
+    --name=dreamax \
     --privileged \
     -e host_uid=$(id -u) \
     -e host_gid=$(id -g) \
