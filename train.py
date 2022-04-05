@@ -17,6 +17,7 @@ from dreamer.logger import TrainingLogger
 from dreamer.world_model import Actor, DenseDecoder, Decoder, WorldModel
 from dreamer.gym_adapter import create_env
 from dreamer.configuration import DreamerConfiguration
+from train_loop import train
 
 
 def create_model(config, observation_space):
@@ -99,8 +100,8 @@ def main():
     jax.config.update('jax_platform_name', config.platform)
 
     print('Available devices:')
-    for d in jax.devices():
-        print(d)
+    for device in jax.devices():
+        print(device)
 
     if not config.jit:
         jax.config.update('jax_disable_jit', True)
@@ -116,7 +117,7 @@ def main():
     environment = create_env(domain, task, config.time_limit, config. action_repeat, config.seed)
     logger = TrainingLogger(config.log_dir)
     agent = create_agent(config, environment, logger)
-    #train(config, agent, environment, logger)
+    train(config, agent, environment, logger)
 
 
 if __name__ == '__main__':
