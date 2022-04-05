@@ -11,17 +11,6 @@ from dreamer.world_model import WorldModel
 from tests.test_rssm import Fixture
 
 
-def update_config(c: DreamerConfiguration):
-    c.update(dict(
-        imag_horizon=12,
-        rssm=dict(deterministic_size=32, stochastic_size=4),
-        encoder=dict(depth=32, kernels=(4, 4, 4, 4)),
-        decoder=dict(depth=32, kernels=(5, 5, 6, 6)),
-        reward=dict(output_sizes=(400, 400, 400, 400)),
-        terminal=dict(output_sizes=(400, 400, 400, 400))
-    ))
-
-
 def model(config):
     model = WorldModel(np.ones((64, 64, 3)), config)
 
@@ -48,7 +37,14 @@ class Fixture2(Fixture):
         super().__init__()
         self.dummy_observations = jax.random.uniform(
             self.rng_split(), (3, 15, 64, 64, 3))
-        update_config(self.config)
+        self.config.update(dict(
+            imag_horizon=12,
+            rssm=dict(deterministic_size=32, stochastic_size=4),
+            encoder=dict(depth=32, kernels=(4, 4, 4, 4)),
+            decoder=dict(depth=32, kernels=(5, 5, 6, 6)),
+            reward=dict(output_sizes=(400, 400, 400, 400)),
+            terminal=dict(output_sizes=(400, 400, 400, 400))
+        ))
         self.model = hk.multi_transform(lambda: model(self.config))
         self.params = self.model.init(
             self.seed, self.dummy_observations, self.dummy_actions)
