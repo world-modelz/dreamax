@@ -16,6 +16,8 @@ class Dataclass:
     def update(self, config: Dict[str, Any], load_with_warning: bool = True):
         if config is not None:
             for k, v in config.items():
+                if type(v) == list:
+                    v = tuple(v)
                 if k in self.__dict__:
                     if isinstance(self.__dict__[k], Dataclass):
                         self.__dict__[k].update(v)
