@@ -36,8 +36,6 @@ class ReplayBufferConfig(Dataclass):
     capacity: int = 1000
     batch_size: int = 32
     sequence_length: int = 50
-    precision: int = 32
-    seed: int = None
 
 
 class OptimizerConfig(Dataclass):

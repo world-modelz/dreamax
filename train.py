@@ -61,7 +61,12 @@ def create_critic(config: DreamerConfiguration):
 
 
 def create_agent(config: DreamerConfiguration, environment, logger: TrainingLogger):
-    experience = ReplayBuffer(config.replay, environment.observation_space, environment.action_space)
+    experience = ReplayBuffer(
+        config.replay,
+        environment.observation_space,
+        environment.action_space,
+        config.precision,
+        config.seed)
     agent = Dreamer(
         environment.observation_space,
         environment.action_space,

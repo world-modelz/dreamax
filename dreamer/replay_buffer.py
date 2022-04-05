@@ -21,16 +21,26 @@ def quantize(image):
 
 
 class ReplayBuffer:
-    def __init__(self, config: ReplayBufferConfig, observation_space: Space, action_space: Space):
+    def __init__(
+            self,
+            config: ReplayBufferConfig,
+            observation_space: Space,
+            action_space: Space,
+            precision: int,
+            seed: int):
 
         self.config = config
 
-        dtype = {16: tf.float16, 32: tf.float32}[self.config.precision]
+        dtype = {16: tf.float16, 32: tf.float32}[precision]
 
-        data_spec = {'observation': tf.TensorSpec(observation_space.shape, tf.uint8), 'action': tf.TensorSpec(action_space.shape, dtype),
-                     'reward': tf.TensorSpec((), dtype), 'terminal': tf.TensorSpec((), dtype)}
+        data_spec = {
+            'observation': tf.TensorSpec(observation_space.shape, tf.uint8),
+            'action': tf.TensorSpec(action_space.shape, dtype),
+            'reward': tf.TensorSpec((), dtype),
+            'terminal': tf.TensorSpec((), dtype)
+        }
 
-        self.buffer = episodic_replay_buffer.EpisodicReplayBuffer(data_spec, seed=self.config.seed, capacity=self.config.capacity,
+        self.buffer = episodic_replay_buffer.EpisodicReplayBuffer(data_spec, seed=seed, capacity=config.capacity,
                                                                   buffer_size=1, dataset_drop_remainder=True,
                                                                   completed_only=False, begin_episode_fn=lambda _: True,
                                                                   end_episode_fn=lambda _: True)

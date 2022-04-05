@@ -35,12 +35,15 @@ class TestReplayBuffer(unittest.TestCase):
         episode_length = 10
         episodes = 3
 
-        buffer_config = dict(capacity=5, batch_size=2,
-                             sequence_length=4, precision=16, seed=0)
+        buffer_config = dict(capacity=5, batch_size=2, sequence_length=4)
         buffer_config = ReplayBufferConfig(buffer_config)
 
         buffer = ReplayBuffer(
-            config=buffer_config, observation_space=env.observation_space, action_space=env.action_space)
+            config=buffer_config,
+            observation_space=env.observation_space,
+            action_space=env.action_space,
+            precision=16,
+            seed=0)
         interact(env, episodes, episode_length, buffer)
         self.assertEqual(buffer.idx + 1, episodes)
 
@@ -53,12 +56,15 @@ class TestReplayBuffer(unittest.TestCase):
             episode_length = 10
             episodes = 3
 
-            buffer_config = dict(capacity=5, batch_size=2,
-                                 sequence_length=4, precision=16, seed=0)
+            buffer_config = dict(capacity=5, batch_size=2, sequence_length=4)
             buffer_config = ReplayBufferConfig(buffer_config)
 
             buffer = ReplayBuffer(
-                config=buffer_config, observation_space=env.observation_space, action_space=env.action_space)
+                config=buffer_config,
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                precision=16,
+                seed=0)
             interact(env, episodes, episode_length, buffer)
             samples = list(buffer.sample(2))
             self.assertEqual(len(samples), 2)
