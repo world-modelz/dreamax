@@ -46,10 +46,10 @@ def create_model(config, observation_space):
 
 def create_actor(config: DreamerConfiguration, action_space: gym.Space):
     actor = hk.without_apply_rng(hk.transform(
-        lambda obs: Actor(
+        lambda *obs: Actor(
             config.actor.output_sizes + (2 * np.prod(action_space.shape),),
             config.actor.min_stddev, config.initialization
-        )(obs)
+        )(obs[-1])
     ))
     return actor
 
