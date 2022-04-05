@@ -20,13 +20,13 @@ class TrainingLogger:
 
     # (N, T, C, H, W)
     def log_video(self, images, step=None, name='policy', fps=30):
-        self._writer.add_video(name, images, step, fps=fps)
-        self._writer.flush()
+        self.writer.add_video(name, images, step, fps=fps)
+        self.writer.flush()
 
     def log_images(self, images, step=None, name='policy'):
-        self._writer.add_images(name, images, step, dataformats='NHWC')
-        self._writer.flush()
+        self.writer.add_images(name, images, step, dataformats='NHWC')
+        self.writer.flush()
 
     def log_figure(self, figure, step=None, name='policy'):
-        self._writer.add_figure(name, figure, step)
-        self._writer.flush()
+        self.writer.add_figure(name, figure, step)
+        self.writer.flush()

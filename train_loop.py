@@ -124,8 +124,7 @@ def train(config: DreamerConfiguration, agent, environment, logger):
     while steps < config.steps:
         print("Performing a training epoch.")
         training_steps, training_episodes_summaries = interact(
-            agent, environment, config.training_steps_per_epoch, config,
-            training=True,
+            agent, environment, config.training_steps_per_epoch, config, training=True,
             on_episode_end=lambda episode_summary, steps_count: on_episode_end(
                 episode_summary, logger=logger, global_step=steps,
                 steps_count=steps_count))
@@ -133,8 +132,7 @@ def train(config: DreamerConfiguration, agent, environment, logger):
         training_summary = make_summary(training_episodes_summaries, 'training')
         if config.evaluation_steps_per_epoch:
             print("Evaluating.")
-            evaluation_summaries = evaluate(agent, environment, logger, config,
-                                            steps)
+            evaluation_summaries = evaluate(agent, environment, logger, config, steps)
             training_summary.update(evaluation_summaries)
         logger.log_evaluation_summary(training_summary, steps)
         # agent.save(agent_data_path)

@@ -122,18 +122,16 @@ class RSSM(hk.Module):
 
         for t, key in enumerate(keys):
 
-            state_stack = jnp.concatenate(state, -1)
-            state_stack_stop = jax.lax.stop_gradient(state_stack)
-
-            action_dist = actor.apply(actor_params, key, state_stack_stop)
-
             if actions is None:
+                state_stack = jnp.concatenate(state, -1)
+                state_stack_stop = jax.lax.stop_gradient(state_stack)
+                action_dist = actor.apply(actor_params, key, state_stack_stop)
                 action = action_dist.sample(seed=key)
             else:
                 action = actions[:, t]
 
             _, state = self.z_head(state, action)
-
+            state_stack = jnp.concatenate(state, -1)
             sequence = sequence.at[:, t].set(state_stack)
 
         return sequence
