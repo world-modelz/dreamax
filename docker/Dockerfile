@@ -11,9 +11,12 @@ ENV IMG_NAME=11.4.0-devel-ubuntu20.04 \
     # the dockerfile should be modified accordingly
     JAXLIB_VERSION=0.3.2
 
+ENV MUJOCO_GL=osmesa
+ENV XLA_PYTHON_CLIENT_MEM_FRACTION=0.9
+
 # install python3-pip
 RUN apt update && apt install git curl wget vim less unzip htop iftop iotop build-essential autotools-dev nfs-common pdsh cmake g++ gcc ca-certificates ssh python3-dev libpython3-dev python3-pip -y
-RUN apt-get install ffmpeg libsm6 libxext6 libx11-6 -y
+RUN apt install ffmpeg libsm6 libxext6 libx11-6 libgl1-mesa-glx libosmesa6 mesa-utils -y
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 && pip install --upgrade pip
 
 # install dependencies via pip
