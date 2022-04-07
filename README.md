@@ -9,9 +9,25 @@ For bug reports please use github issues.
 
 ## Getting started
 
-```
-TBD
-```
+### 1. Build the docker container
+To build the docker container run:
+
+    
+    cd docker
+    ./build.sh
+    
+
+### 2. Run the docker container
+    
+    docker/start.sh
+    
+
+### 3. Start training with default configuration 
+Inside the docker container run:
+    
+    python train.py
+
+Tensorboard events will be written to the 'results' directory.
 
 
 ## Papers
@@ -23,6 +39,7 @@ TBD
 ## Links
 
 - Dreamer implementation in JAX: [yardenas/jax-dreamer](https://github.com/yardenas/jax-dreamer)
+- Original Dreamer v1 implementation (TF2): [danijar/dreamer](https://github.com/danijar/dreamer)
 - Original Dreamer v2 implementation (TF2): [danijar/dreamerv2](https://github.com/danijar/dreamerv2)
 
 
