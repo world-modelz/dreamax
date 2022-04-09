@@ -33,9 +33,9 @@ class Dataclass:
 
 
 class ReplayBufferConfig(Dataclass):
-    capacity: int = 1000
-    batch_size: int = 32
-    sequence_length: int = 50
+    capacity: int = 200_000
+    batch_size: int = 64
+    sequence_length: int = 64
 
 
 class OptimizerConfig(Dataclass):
@@ -76,7 +76,7 @@ class DreamerConfiguration(Dataclass):
     steps: int = 1e6
     training_steps_per_epoch: int = 2.5e4
     evaluation_steps_per_epoch: int = 1e4
-    prefill: int = 5000
+    prefill: int = 10000
     env_step_per_iter: int = 5
     updates_per_iter: int = 1
     replay: ReplayBufferConfig = ReplayBufferConfig()
