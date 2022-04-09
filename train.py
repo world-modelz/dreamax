@@ -4,6 +4,10 @@ import argparse
 import json
 import numpy as np
 import gym
+import functools
+from tqdm import tqdm
+from collections import defaultdict
+from pathlib import Path
 
 import tensorflow as tf
 import jax
@@ -17,7 +21,6 @@ from dreamer.logger import TrainingLogger
 from dreamer.world_model import Actor, DenseDecoder, Decoder, WorldModel
 from dreamer.gym_adapter import create_env
 from dreamer.configuration import DreamerConfiguration
-from train_loop import train
 
 
 def create_model(config, obs_space):
@@ -60,27 +63,6 @@ def create_critic(config: DreamerConfiguration):
     return critic
 
 
-def create_agent(config: DreamerConfiguration, environment, logger: TrainingLogger):
-    experience = ReplayBuffer(
-        config.replay,
-        environment.obs_space,
-        environment.action_space,
-        config.precision,
-        config.seed)
-    agent = Dreamer(
-        environment.obs_space,
-        environment.action_space,
-        create_model(config, environment.obs_space),
-        create_actor(config, environment.action_space),
-        create_critic(config),
-        experience,
-        logger,
-        config,
-        get_mixed_precision_policy(config.precision)
-    )
-    return agent
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--configs', nargs='+', default=['configs/dreamer_v2.json'])
@@ -109,7 +91,7 @@ def evaluate_model(obss, actions, key, model, model_params, precision):
     out = jax.tree_map(lambda x: ((x + 0.5) * 255).astype(jnp.uint8), out)
     return out
 
-
+'''
 def do_episode(agent, training: bool, environment, config: DreamerConfiguration, pbar, render: bool):
     episode_summary = defaultdict(list)
     steps = 0
@@ -144,8 +126,9 @@ def do_episode(agent, training: bool, environment, config: DreamerConfiguration,
 
     episode_summary['steps'] = [steps]
     return steps, episode_summary
+'''
 
-
+'''
 def interact(agent, environment, steps, config: DreamerConfiguration, training=True, on_episode_end=None):
     pbar = tqdm(total=steps)
     steps_count = 0
@@ -159,6 +142,7 @@ def interact(agent, environment, steps, config: DreamerConfiguration, training=T
             on_episode_end(episode_summary, steps_count)
     pbar.close()
     return steps, episodes
+'''
 
 
 class Rollout_worker():
@@ -178,7 +162,8 @@ class Rollout_worker():
         self.steps = 0
         self.obs = self.env.reset()
         self.done = False
-        self.episode_sum_return = 0
+        self.sum_reward = 0
+        self.episode_steps = 0
 
     def do_rollout(self, n_steps: int = None, n_episodes: int = None, random: bool = False):
 
@@ -207,11 +192,14 @@ class Rollout_worker():
                 self.replay_buffer.store(env_transition_dict)
 
             self.obs = next_obs
-            self.episode_sum_return += reward
+            self.sum_reward += reward
             rollout_step_count += 1
+            self.episode_steps += 1
 
             if self.done:
                 rollout_episode_count += 1
+
+                print(f"DONE EPISODE   SUM REWARD: {self.sum_reward}  IN {self.episode_steps} STEPS")
 
                 # todo: LOG END OG EPISODE
 
@@ -265,7 +253,7 @@ def on_episode_end(episode_summary, logger, global_step, steps_count):
     logger.log_evaluation_summary(summary, steps)
 
 
-def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, environment, logger):
+def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, logger):
     steps = 0
     agent_data_path = Path(config.log_dir, 'agent_data')
 
@@ -282,6 +270,7 @@ def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, e
         rollout_worker.do_rollout(n_steps=config.train_every)
         agent.update()
 
+        '''
         print("Performing a training epoch.")
 
         _on_episode_end = lambda episode_summary, steps_count: on_episode_end(episode_summary, logger=logger, global_step=steps,
@@ -300,9 +289,7 @@ def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, e
 
         logger.log_evaluation_summary(training_summary, steps)
         # agent.save(agent_data_path)
-
-    environment.close()
-    return agent
+        '''
 
 
 def main():
@@ -338,8 +325,24 @@ def main():
     domain, task = config.task.split('.')
     environment = create_env(domain, task, config.time_limit, config. action_repeat, config.seed)
     logger = TrainingLogger(config.log_dir)
-    agent = create_agent(config, environment, logger)
-    train(config, agent, environment, logger)
+
+    replay_buffer = ReplayBuffer(config=config.replay, obs_space=environment.observation_space,
+                                 action_space=environment.action_space,  precision=config.precision, seed=config.seed)
+
+    agent = Dreamer(
+        obs_space=environment.observation_space, action_space=environment.action_space,
+        model=create_model(config, environment.observation_space),
+        actor=create_actor(config, environment.action_space),
+        critic=create_critic(config),
+        replay_buffer=replay_buffer,
+        logger=logger, config=config,
+        precision=get_mixed_precision_policy(config.precision)
+    )
+
+    rollout_worker = Rollout_worker(config=config, env=environment, agent_forward_fn=agent.__call__,
+                                    replay_buffer=replay_buffer)
+
+    train(config=config, agent=agent, rollout_worker=rollout_worker, logger=logger)
 
 
 if __name__ == '__main__':

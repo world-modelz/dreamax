@@ -53,7 +53,7 @@ class Dreamer:
         model: hk.MultiTransformed,
         actor: hk.Transformed,
         critic: hk.Transformed,
-        experience: ReplayBuffer,
+        replay_buffer: ReplayBuffer,
         logger: TrainingLogger,
         config: DreamerConfiguration,
         precision=get_mixed_precision_policy(16),
@@ -72,7 +72,7 @@ class Dreamer:
                              precision, features_example[None].astype(dtype))
         self.critic = Learner(critic, next(self.rng_seq), config.critic_opt,
                               precision, features_example[None].astype(dtype))
-        self.experience = experience
+        self.replay_buffer = replay_buffer
         self.logger = logger
         self.state = (self.init_state, jnp.zeros(action_space.shape, dtype))
         self.training_step = 0
@@ -117,11 +117,13 @@ class Dreamer:
         action = policy.sample(seed=key) if training else policy.mode(seed=key)
         return action.squeeze(0), current_state
 
+    '''
     def observe(self, transition):
         self.training_step += self.c.action_repeat
         self.experience.store(transition)
         if transition['terminal'] or transition['info'].get('TimeLimit.truncated', False):
             self.state = (self.init_state, jnp.zeros_like(self.state[-1]))
+    '''
 
     @property
     def init_state(self):
@@ -131,7 +133,7 @@ class Dreamer:
 
     def update(self):
         reports = defaultdict(float)
-        for batch in tqdm(self.experience.sample(self.c.update_steps),
+        for batch in tqdm(self.replay_buffer.sample(self.c.update_steps),
                           leave=False, total=self.c.update_steps):
             self.learning_states, reports = self._update(dict(batch), *self.learning_states, key=next(self.rng_seq))
 
@@ -269,13 +271,13 @@ class Dreamer:
         with open(os.path.join(path, 'checkpoint.pickle'), 'wb') as f:
             pickle.dump({'actor': self.actor,
                          'critics': self.critic,
-                         'experience': self.experience,
+                         'experience': self.replay_buffer,
                          'training_steps': self.training_step}, f)
 
     def load(self, path):
         with open(os.path.join(path, 'checkpoint.pickle'), 'rb') as f:
             data = pickle.load(f)
-        for key, obj in zip(data.keys(), [self.actor, self.critic, self.experience, self.training_step]):
+        for key, obj in zip(data.keys(), [self.actor, self.critic, self.replay_buffer, self.training_step]):
             obj = data[key]
 
     @property
