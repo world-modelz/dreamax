@@ -268,7 +268,11 @@ def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, l
         agent.update()
 
         rollout_worker.do_rollout(n_steps=config.train_every)
-        agent.update()
+        metrics = agent.update()
+
+        logger.log_metrics(metrics, steps)
+
+        steps += config.train_every
 
         '''
         print("Performing a training epoch.")
@@ -323,7 +327,7 @@ def main():
         hk.mixed_precision.set_policy(Decoder, policy.with_output_dtype(jnp.float32))
 
     domain, task = config.task.split('.')
-    environment = create_env(domain, task, config.time_limit, config. action_repeat, config.seed)
+    environment = create_env(domain, task, config.time_limit, config.seed)
     logger = TrainingLogger(config.log_dir)
 
     replay_buffer = ReplayBuffer(config=config.replay, obs_space=environment.observation_space,

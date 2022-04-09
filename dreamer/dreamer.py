@@ -140,7 +140,8 @@ class Dreamer:
             # Average training metrics across update steps.
             for k, v in reports.items():
                 reports[k] += float(v) / self.c.update_steps
-        self.logger.log_metrics(reports, self.training_step)
+
+        return reports
 
     @functools.partial(jax.jit, static_argnums=0)
     def _update(

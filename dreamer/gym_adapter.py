@@ -7,12 +7,11 @@ from gym.spaces.box import Box
 from gym.wrappers import RescaleAction
 
 
-def create_env(domain, task, episode_length, action_repeat, seed):
+def create_env(domain, task, episode_length, seed):
     env = suite.load(domain, task, environment_kwargs=dict(flat_observation=True))
     env = DeepMindSuiteAdapter(env)
     env = gym.wrappers.TimeLimit(env, max_episode_steps=episode_length)
     render_kwargs = dict(height=64, width=64, camera_id=0)
-    env = RepeatAction(env, action_repeat)
     env = RescaleAction(env, -1.0, 1.0)
     env = RenderedObservation(env, (64, 64), render_kwargs)
     env.seed(seed)
@@ -52,22 +51,6 @@ class DeepMindSuiteAdapter(gym.Env):
 
     def seed(self, seed=None):
         self._env.task.random.seed(seed)
-
-
-class RepeatAction(Wrapper):
-    def __init__(self, env, repeat):
-        super(RepeatAction, self).__init__(env)
-        assert repeat > 0, 'repeat must be positve.'
-        self.repeat = repeat
-
-    def step(self, action):
-        total_reward = 0.0
-        for current_step in range(self.repeat):
-            obs, reward, done, info = self.env.step(action)
-            total_reward += reward
-            if done:
-                break
-        return obs, total_reward, done, info  # noqa
 
 
 class RenderedObservation(ObservationWrapper):
