@@ -18,18 +18,18 @@ class TestGymAdapter(unittest.TestCase):
         self.assertEqual(x.shape, (240, 320, 3))
         self.assertEqual(x.dtype, np.uint8)
 
-        # test shape and dtype of action and observation spaces
+        # test shape and dtype of action and obs spaces
         self.assertEqual(env.action_space.shape, (1,))
         self.assertEqual(env.action_space.dtype, np.float32)
-        self.assertEqual(env.observation_space.shape, (64, 64, 3))
-        self.assertEqual(env.observation_space.dtype, np.float32)
+        self.assertEqual(env.obs_space.shape, (64, 64, 3))
+        self.assertEqual(env.obs_space.dtype, np.float32)
 
         # reset env
         obs = env.reset()
-        self.assertEqual(obs.shape, env.observation_space.shape)
+        self.assertEqual(obs.shape, env.obs_space.shape)
 
         # execute random action
         action = env.action_space.sample()
         obs, reward, done, info = env.step(action=action)
-        self.assertEqual(obs.shape, env.observation_space.shape)
+        self.assertEqual(obs.shape, env.obs_space.shape)
         self.assertFalse(done)

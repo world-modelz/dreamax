@@ -22,7 +22,7 @@ class Fixture:
         self.policy = hk.transform(lambda x: tfd.Normal(hk.Linear(1)(x), 1.0))
         self.policy_params = self.policy.init(
             self.rng_split(), jnp.zeros((1, 36)))
-        self.dummy_observations = jax.random.uniform(
+        self.dummy_obss = jax.random.uniform(
             self.rng_split(), (3, 15, 256))
         self.dummy_actions = jax.random.uniform(self.rng_split(), (3, 14, 1))
         subkey1, subkey2 = self.rng_split(3)
@@ -38,18 +38,18 @@ class TestRssm(unittest.TestCase):
     def test_call(self):
         f = Fixture()
         call = hk.transform(
-            lambda prev_state, prev_action, observation:
-                RSSM(f.config)(prev_state, prev_action, observation)
+            lambda prev_state, prev_action, obs:
+                RSSM(f.config)(prev_state, prev_action, obs)
         )
         subkey = f.rng_split()
         params = call.init(subkey, tuple(map(lambda x: x[None, 0], f.dummy_state)),
                            f.dummy_actions[None, 0, 0],
-                           f.dummy_observations[None, 0, 0])
+                           f.dummy_obss[None, 0, 0])
         (prior, posterior), state = call.apply(
             params, subkey,
             tuple(map(lambda x: x[0], f.dummy_state)),
             f.dummy_actions[0, 0],
-            f.dummy_observations[0, 0])
+            f.dummy_obss[0, 0])
         self.assertEqual(prior.event_shape, (4,))
         self.assertEqual(prior.batch_shape, ())
         self.assertEqual(prior.event_shape, posterior.event_shape)
@@ -60,8 +60,8 @@ class TestRssm(unittest.TestCase):
     def test_generate(self):
         f = Fixture()
         call = hk.transform(
-            lambda prev_state, prev_action, observation:
-                RSSM(f.config)(prev_state, prev_action, observation)
+            lambda prev_state, prev_action, obs:
+                RSSM(f.config)(prev_state, prev_action, obs)
         )
         generate = hk.transform(
             lambda initial_state, policy, policy_params:
@@ -74,7 +74,7 @@ class TestRssm(unittest.TestCase):
             subkey,
             tuple(map(lambda x: x[None, 0], f.dummy_state)),
             f.dummy_actions[None, 0, 0],
-            f.dummy_observations[None, 0, 0]
+            f.dummy_obss[None, 0, 0]
         )
         output = generate.apply(
             params,
@@ -88,20 +88,20 @@ class TestRssm(unittest.TestCase):
     def test_infer(self):
         f = Fixture()
         call = hk.transform(
-            lambda prev_state, prev_action, observation:
-                RSSM(f.config)(prev_state, prev_action, observation)
+            lambda prev_state, prev_action, obs:
+                RSSM(f.config)(prev_state, prev_action, obs)
         )
         infer = hk.transform(
-            lambda observations, actions:
-                RSSM(f.config).observe_sequence(observations, actions)
+            lambda obss, actions:
+                RSSM(f.config).observe_sequence(obss, actions)
         )
         subkey = f.rng_split()
         params_infer = infer.init(
-            subkey, f.dummy_observations, f.dummy_actions)
+            subkey, f.dummy_obss, f.dummy_actions)
         outputs_infer = infer.apply(
             params_infer,
             subkey,
-            f.dummy_observations,
+            f.dummy_obss,
             f.dummy_actions
         )
         (prior, posterior), outs = outputs_infer
@@ -116,12 +116,12 @@ class TestRssm(unittest.TestCase):
             subkey,
             tuple(map(lambda x: x[None, 0], f.dummy_state)),
             f.dummy_actions[None, 0, 0],
-            f.dummy_observations[None, 0, 0]
+            f.dummy_obss[None, 0, 0]
         )
         *_, outs_call = infer.apply(
             params_call,
             subkey,
-            f.dummy_observations,
+            f.dummy_obss,
             f.dummy_actions
         )
         self.assertTrue(jnp.equal(outs, outs_call).all())

@@ -6,17 +6,17 @@ import gym
 
 class DummyGymEnv(gym.Env):
 
-    def __init__(self, observation_space: typing.Union[gym.Space, typing.List[gym.Space]],
+    def __init__(self, obs_space: typing.Union[gym.Space, typing.List[gym.Space]],
                  action_space: typing.Union[gym.Space, typing.List[gym.Space]]):
 
-        self.observation_space = observation_space
+        self.obs_space = obs_space
         self.action_space = action_space
 
     def reset(self):
-        if type(self.observation_space) == list:
-            obs = [obs.sample() for obs in self.observation_space]
+        if type(self.obs_space) == list:
+            obs = [obs.sample() for obs in self.obs_space]
         else:
-            obs = self.observation_space.sample()
+            obs = self.obs_space.sample()
 
         return obs
 

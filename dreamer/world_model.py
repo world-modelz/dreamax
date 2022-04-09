@@ -1,4 +1,4 @@
-from dreamer.rssm import RSSM, ZLayer, State, Action, Observation
+from dreamer.rssm import RSSM, ZLayer, State, Action, obs
 from dreamer.configuration import DreamerConfiguration
 from typing import Optional, Sequence, Tuple
 from dreamer.utils import initializer
@@ -19,7 +19,7 @@ class Encoder(hk.Module):
         self.kernels = kernels
         self.initialization = initialization
 
-    def __call__(self, observation: jnp.ndarray) -> jnp.ndarray:
+    def __call__(self, obs: jnp.ndarray) -> jnp.ndarray:
         def cnn(x):
             for i, kernel in enumerate(self.kernels):
                 depth = 2 ** i * self.depth
@@ -35,7 +35,7 @@ class Encoder(hk.Module):
             return x
 
         cnn = hk.BatchApply(cnn)
-        return hk.Flatten(2)(cnn(observation))
+        return hk.Flatten(2)(cnn(obs))
 
 
 class Decoder(hk.Module):
@@ -110,13 +110,13 @@ class DenseDecoder(hk.Module):
 
 
 class WorldModel(hk.Module):
-    def __init__(self, observation_space, config: DreamerConfiguration):
+    def __init__(self, obs_space, config: DreamerConfiguration):
         super().__init__()
         self.rssm = RSSM(config)
         self.encoder = Encoder(config.encoder.depth,
                                config.encoder.kernels, config.initialization)
         self.decoder = Decoder(config.decoder.depth, config.decoder.kernels,
-                               observation_space.shape, config.initialization)
+                               obs_space.shape, config.initialization)
         self.reward = DenseDecoder(
             config.reward.output_sizes + (1,), 'normal', config.initialization, 'reward')
         self.terminal = DenseDecoder(
@@ -126,10 +126,10 @@ class WorldModel(hk.Module):
         self,
         prev_state: State,
         prev_action: Action,
-        observation: Observation
+        obs: obs
     ) -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], State]:
-        observation = jnp.squeeze(self.encoder(observation[None, None]))
-        return self.rssm(prev_state, prev_action, observation)
+        obs = jnp.squeeze(self.encoder(obs[None, None]))
+        return self.rssm(prev_state, prev_action, obs)
 
     def generate_sequence(
         self,
@@ -146,14 +146,14 @@ class WorldModel(hk.Module):
 
     def observe_sequence(
         self,
-        observation: Observation,
+        obs: obs,
         action: Action
     ) -> Tuple[
         Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag],
         jnp.ndarray, tfd.Normal, tfd.Normal, tfd.Bernoulli
     ]:
-        observation = self.encoder(observation)
-        (prior, posterior), features = self.rssm.observe_sequence(observation, action)
+        obs = self.encoder(obs)
+        (prior, posterior), features = self.rssm.observe_sequence(obs, action)
         reward = self.reward(features)
         terminal = self.terminal(features)
         decoded = self.decode(features)
@@ -170,10 +170,10 @@ class Actor(hk.Module):
         self.min_stddev = min_stddev
         self.initialization = initialization
 
-    def __call__(self, observation):
+    def __call__(self, obs):
         mlp = hk.nets.MLP(self.output_sizes, activation=jnn.elu,
                           w_init=initializer(self.initialization))
-        mu, stddev = jnp.split(mlp(observation), 2, axis=-1)
+        mu, stddev = jnp.split(mlp(obs), 2, axis=-1)
         init_std = np.log(np.exp(5.0) - 1.0).astype(stddev.dtype)
         stddev = jnn.softplus(stddev + init_std) + self.min_stddev
         multivariate_normal_diag = tfd.Normal(5.0 * jnn.tanh(mu / 5.0), stddev)

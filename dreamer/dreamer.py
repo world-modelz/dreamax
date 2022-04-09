@@ -17,14 +17,14 @@ from tqdm import tqdm
 from dreamer.configuration import DreamerConfiguration
 from dreamer.learner import Learner, LearningState
 from dreamer.replay_buffer import ReplayBuffer
-from dreamer.rssm import Observation, init_state
+from dreamer.rssm import obs, init_state
 from dreamer.logger import TrainingLogger
 
 
 PRNGKey = jnp.ndarray
 State = Tuple[jnp.ndarray, jnp.ndarray]
 Action = jnp.ndarray
-Observation = np.ndarray
+obs = np.ndarray
 Batch = Mapping[str, np.ndarray]
 tfd = tfp.distributions
 
@@ -48,7 +48,7 @@ def discount_(factor, length):
 class Dreamer:
     def __init__(
         self,
-        observation_space: gym.Space,
+        obs_space: gym.Space,
         action_space: gym.Space,
         model: hk.MultiTransformed,
         actor: hk.Transformed,
@@ -65,7 +65,7 @@ class Dreamer:
         dtype = precision.compute_dtype
         self.model = Learner(model, next(self.rng_seq),
                              config.model_opt, precision,
-                             observation_space.sample()[None, None].astype(dtype),
+                             obs_space.sample()[None, None].astype(dtype),
                              action_space.sample()[None, None].astype(dtype))
         features_example = jnp.concatenate(self.init_state, -1)[None]
         self.actor = Learner(actor, next(self.rng_seq), config.actor_opt,
@@ -76,17 +76,17 @@ class Dreamer:
         self.logger = logger
         self.state = (self.init_state, jnp.zeros(action_space.shape, dtype))
         self.training_step = 0
-        self.prefill_policy = prefill_policy or (lambda observation: action_space.sample())
+        self.prefill_policy = prefill_policy or (lambda obs: action_space.sample())
 
-    def __call__(self, observation: Observation, training: bool):
+    def __call__(self, obs: obs, training: bool):
         if self.training_step <= self.c.prefill and training:
-            return self.prefill_policy(observation)
+            return self.prefill_policy(obs)
         if self.time_to_update and training:
             self.update()
         action, current_state = self.policy(
             self.state[0],
             self.state[1],
-            observation,
+            obs,
             self.model.params,
             self.actor.params,
             next(self.rng_seq),
@@ -100,7 +100,7 @@ class Dreamer:
         self,
         prev_state: State,
         prev_action: Action,
-        observation: Observation,
+        obs: obs,
         model_params: hk.Params,
         actor_params: hk.Params,
         key: PRNGKey,
@@ -108,8 +108,8 @@ class Dreamer:
     ):
         filter_, *_ = self.model.apply
         key, subkey = jax.random.split(key)
-        observation = observation.astype(self.precision.compute_dtype)
-        _, current_state = filter_(model_params, key, prev_state, prev_action, observation)
+        obs = obs.astype(self.precision.compute_dtype)
+        _, current_state = filter_(model_params, key, prev_state, prev_action, obs)
         features = jnp.concatenate(current_state, -1)[None]
         policy = self.actor.apply(actor_params, features)
         action = policy.sample(seed=key) if training else policy.mode(seed=key)
@@ -166,11 +166,11 @@ class Dreamer:
 
         def loss(params: hk.Params) -> Tuple[float, dict]:
             _, _, infer, _ = self.model.apply
-            outputs_infer = infer(params, key, batch['observation'], batch['action'])
+            outputs_infer = infer(params, key, batch['obs'], batch['action'])
             (prior, posterior), features, decoded, reward, terminal = outputs_infer
             kl = jnp.maximum(tfd.kl_divergence(posterior, prior).mean(), self.c.free_kl)
-            observation_f32 = batch['observation'].astype(jnp.float32)
-            log_p_obs = decoded.log_prob(observation_f32).mean()
+            obs_f32 = batch['obs'].astype(jnp.float32)
+            log_p_obs = decoded.log_prob(obs_f32).mean()
             log_p_rews = reward.log_prob(batch['reward']).mean()
             log_p_terms = terminal.log_prob(batch['terminal']).mean()
             loss_ = self.c.kl_scale * kl - log_p_obs - log_p_rews - log_p_terms
@@ -178,7 +178,7 @@ class Dreamer:
                 'agent/model/kl': kl,
                 'agent/model/post_entropy': posterior.entropy().mean(),
                 'agent/model/prior_entropy': prior.entropy().mean(),
-                'agent/model/log_p_observation': -log_p_obs,
+                'agent/model/log_p_obs': -log_p_obs,
                 'agent/model/log_p_reward': -log_p_rews,
                 'agent/model/log_p_terminal': -log_p_terms,
                 'features': features

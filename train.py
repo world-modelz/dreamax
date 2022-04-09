@@ -20,24 +20,24 @@ from dreamer.configuration import DreamerConfiguration
 from train_loop import train
 
 
-def create_model(config, observation_space):
+def create_model(config, obs_space):
     def model():
-        _model = WorldModel(observation_space, config)
+        _model = WorldModel(obs_space, config)
 
-        def filter_state(prev_state, prev_action, observation):
-            return _model(prev_state, prev_action, observation)
+        def filter_state(prev_state, prev_action, obs):
+            return _model(prev_state, prev_action, obs)
 
         def generate_sequence(initial_state, policy, policy_params, actions=None):
             return _model.generate_sequence(initial_state, policy, policy_params, actions)
 
-        def observe_sequence(observations, actions):
-            return _model.observe_sequence(observations, actions)
+        def observe_sequence(obss, actions):
+            return _model.observe_sequence(obss, actions)
 
         def decode(feature):
             return _model.decode(feature)
 
-        def init(observations, actions):
-            return _model.observe_sequence(observations, actions)
+        def init(obss, actions):
+            return _model.observe_sequence(obss, actions)
 
         return init, (filter_state, generate_sequence, observe_sequence, decode)
 
@@ -63,14 +63,14 @@ def create_critic(config: DreamerConfiguration):
 def create_agent(config: DreamerConfiguration, environment, logger: TrainingLogger):
     experience = ReplayBuffer(
         config.replay,
-        environment.observation_space,
+        environment.obs_space,
         environment.action_space,
         config.precision,
         config.seed)
     agent = Dreamer(
-        environment.observation_space,
+        environment.obs_space,
         environment.action_space,
-        create_model(config, environment.observation_space),
+        create_model(config, environment.obs_space),
         create_actor(config, environment.action_space),
         create_critic(config),
         experience,

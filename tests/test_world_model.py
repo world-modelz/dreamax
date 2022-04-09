@@ -14,20 +14,20 @@ from tests.test_rssm import Fixture
 def model(config):
     model = WorldModel(np.ones((64, 64, 3)), config)
 
-    def filter_state(prev_state, prev_action, observation):
-        return model(prev_state, prev_action, observation)
+    def filter_state(prev_state, prev_action, obs):
+        return model(prev_state, prev_action, obs)
 
     def generate_sequence(initial_state, policy, policy_params):
         return model.generate_sequence(initial_state, policy, policy_params)
 
-    def observe_sequence(observations, actions):
-        return model.observe_sequence(observations, actions)
+    def observe_sequence(obss, actions):
+        return model.observe_sequence(obss, actions)
 
     def decode(feature):
         return model.decode(feature)
 
-    def init(observations, actions):
-        return model.observe_sequence(observations, actions)
+    def init(obss, actions):
+        return model.observe_sequence(obss, actions)
 
     return init, (filter_state, generate_sequence, observe_sequence, decode)
 
@@ -35,7 +35,7 @@ def model(config):
 class Fixture2(Fixture):
     def __init__(self):
         super().__init__()
-        self.dummy_observations = jax.random.uniform(
+        self.dummy_obss = jax.random.uniform(
             self.rng_split(), (3, 15, 64, 64, 3))
         self.config.update(dict(
             imag_horizon=12,
@@ -47,7 +47,7 @@ class Fixture2(Fixture):
         ))
         self.model = hk.multi_transform(lambda: model(self.config))
         self.params = self.model.init(
-            self.seed, self.dummy_observations, self.dummy_actions)
+            self.seed, self.dummy_obss, self.dummy_actions)
 
 
 class TestWorldModel(unittest.TestCase):
@@ -60,7 +60,7 @@ class TestWorldModel(unittest.TestCase):
             f.rng_split(),
             tuple(map(lambda x: x[0], f.dummy_state)),
             f.dummy_actions[0, 0],
-            f.dummy_observations[0, 0]
+            f.dummy_obss[0, 0]
         )
         self.assertEqual(prior.event_shape, (4,))
         self.assertEqual(prior.batch_shape, ())
@@ -88,7 +88,7 @@ class TestWorldModel(unittest.TestCase):
         _, _, infer, _ = f.model.apply
         (prior, posterior), features, decoded, reward, terminal = infer(
             f.params, f.rng_split(),
-            f.dummy_observations, f.dummy_actions
+            f.dummy_obss, f.dummy_actions
         )
         self.assertEqual(prior.event_shape, (4,))
         self.assertEqual(prior.batch_shape, (3, 15))

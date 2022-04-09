@@ -13,7 +13,7 @@ tfd = tfp.distributions
 
 State = Tuple[jnp.ndarray, jnp.ndarray]
 Action = jnp.ndarray
-Observation = jnp.ndarray
+obs = jnp.ndarray
 
 
 class ZHeadLayer(hk.Module):
@@ -59,11 +59,11 @@ class ZLayer(hk.Module):
         self.config = config
         self.initialization = inititialization
 
-    def __call__(self, prev_state: State, observation: Observation) -> Tuple[tfd.MultivariateNormalDiag, State]:
+    def __call__(self, prev_state: State, obs: obs) -> Tuple[tfd.MultivariateNormalDiag, State]:
 
         # Unstack state
         _, det = prev_state
-        cat = jnp.concatenate([det, observation], -1)
+        cat = jnp.concatenate([det, obs], -1)
 
         x = hk.Linear(self.config.hidden, name='h1', w_init=initializer(self.initialization))(cat)
         x = jnn.elu(x)
@@ -96,11 +96,11 @@ class RSSM(hk.Module):
         self.z_head = ZHeadLayer(config.rssm, config.initialization)
         self.z = ZLayer(config.rssm, config.initialization)
 
-    def __call__(self, prev_state: State, prev_action: Action, observation: Observation) \
+    def __call__(self, prev_state: State, prev_action: Action, obs: obs) \
             -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], State]:
 
         z_head_dist, state = self.z_head(prev_state, prev_action)
-        z_dist, state = self.z(state, observation)
+        z_dist, state = self.z(state, obs)
 
         return (z_head_dist, z_dist), state
 
@@ -136,18 +136,18 @@ class RSSM(hk.Module):
 
         return sequence
 
-    def observe_sequence(self, observations: Observation, actions: Action) \
+    def observe_sequence(self, obss: obs, actions: Action) \
             -> Tuple[Tuple[tfd.MultivariateNormalDiag, tfd.MultivariateNormalDiag], jnp.ndarray]:
 
         z_heads, z_s = [], []
-        features = jnp.zeros(observations.shape[:2] +
+        features = jnp.zeros(obss.shape[:2] +
                              (self.config.rssm.stochastic_size +
                               self.config.rssm.deterministic_size,))
-        state = init_state(observations.shape[0], self.config.rssm.stochastic_size, self.config.rssm.deterministic_size)
+        state = init_state(obss.shape[0], self.config.rssm.stochastic_size, self.config.rssm.deterministic_size)
 
         # Unroll over sequenz
-        for t in range(observations.shape[1]):
-            (z_head_dist, z_dist), state = self.__call__(state, actions[:, t], observations[:, t])
+        for t in range(obss.shape[1]):
+            (z_head_dist, z_dist), state = self.__call__(state, actions[:, t], obss[:, t])
 
             # Add mean and stddev to buffer list.
             z_heads.append((z_head_dist.mean(), z_head_dist.stddev()))
