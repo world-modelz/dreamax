@@ -79,10 +79,12 @@ class Dreamer:
         self.prefill_policy = prefill_policy or (lambda obs: action_space.sample())
 
     def __call__(self, obs: obs, training: bool):
-        if self.training_step <= self.c.prefill and training:
-            return self.prefill_policy(obs)
-        if self.time_to_update and training:
-            self.update()
+        #if self.training_step <= self.c.prefill and training:
+        #    return self.prefill_policy(obs)
+
+        #if self.time_to_update and training:
+        #    self.update()
+
         action, current_state = self.policy(
             self.state[0],
             self.state[1],
