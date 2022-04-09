@@ -272,22 +272,20 @@ def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, l
     while steps < config.steps:
 
         metrics = defaultdict(float)
-        batch = list(replay_buffer.sample(config.update_steps))
+        batch = list(replay_buffer.sample(config.updates_per_iter))
 
         for sample in batch:
             agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states, key=next(agent.rng_seq))
 
             # Average training metrics across update steps.
             for k, v in reports.items():
-                metrics[k] += float(v) / config.update_steps
+                metrics[k] += float(v) / config.updates_per_iter
 
-        metrics = agent.old_update()
-
-        rollout_worker.do_rollout(n_steps=config.train_every)
+        rollout_worker.do_rollout(n_steps=config.env_step_per_iter)
 
         logger.log_metrics(metrics, steps)
 
-        steps += config.train_every
+        steps += config.env_step_per_iter
 
         '''
         print("Performing a training epoch.")
