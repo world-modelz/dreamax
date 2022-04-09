@@ -8,8 +8,8 @@
     "training_steps_per_epoch": 2.5e4,
     "evaluation_steps_per_epoch": 1e4,
     "prefill": 5000,
-    "train_every": 1000,
-    "update_steps": 100,
+    "env_step_per_iter": 5,
+    "updates_per_iter": 1,
     "replay": {
         "capacity": 1000,
         "batch_size": 32,

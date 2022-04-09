@@ -77,8 +77,8 @@ class DreamerConfiguration(Dataclass):
     training_steps_per_epoch: int = 2.5e4
     evaluation_steps_per_epoch: int = 1e4
     prefill: int = 5000
-    train_every: int = 1000
-    update_steps: int = 100
+    env_step_per_iter: int = 5
+    updates_per_iter: int = 1
     replay: ReplayBufferConfig = ReplayBufferConfig()
     platform: str = 'gpu'
     jit: bool = True
