@@ -147,10 +147,13 @@ def interact(agent, environment, steps, config: DreamerConfiguration, training=T
 
 class Rollout_worker():
 
-    def __init__(self, config: DreamerConfiguration, env: gym.Env, agent_forward_fn: callable, replay_buffer: ReplayBuffer = None):
+    def __init__(self, config: DreamerConfiguration, env: gym.Env, agent_forward_fn: callable, agent_reset_fn: callable,
+                 replay_buffer: ReplayBuffer = None):
+
         self.config = config
         self.env = env
         self.agent_forward_fn = agent_forward_fn
+        self.agent_reset_fn = agent_reset_fn
         self.replay_buffer = replay_buffer
 
         self.action_space = self.env.action_space
@@ -204,6 +207,8 @@ class Rollout_worker():
                 # todo: LOG END OG EPISODE
 
                 self.reset()
+                self.agent_reset_fn()
+
 
             # Determine if rollout is done.
             if n_steps is not None:
@@ -253,7 +258,7 @@ def on_episode_end(episode_summary, logger, global_step, steps_count):
     logger.log_evaluation_summary(summary, steps)
 
 
-def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, logger):
+def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, logger, replay_buffer: ReplayBuffer):
     steps = 0
     agent_data_path = Path(config.log_dir, 'agent_data')
 
@@ -265,10 +270,20 @@ def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, l
         rollout_worker.do_rollout(n_steps=config.prefill, random=True)
 
     while steps < config.steps:
-        agent.update()
+
+        metrics = defaultdict(float)
+        batch = list(replay_buffer.sample(config.update_steps))
+
+        for sample in batch:
+            agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states, key=next(agent.rng_seq))
+
+            # Average training metrics across update steps.
+            for k, v in reports.items():
+                metrics[k] += float(v) / config.update_steps
+
+        metrics = agent.old_update()
 
         rollout_worker.do_rollout(n_steps=config.train_every)
-        metrics = agent.update()
 
         logger.log_metrics(metrics, steps)
 
@@ -344,9 +359,9 @@ def main():
     )
 
     rollout_worker = Rollout_worker(config=config, env=environment, agent_forward_fn=agent.__call__,
-                                    replay_buffer=replay_buffer)
+                                    agent_reset_fn=agent.reset_state, replay_buffer=replay_buffer)
 
-    train(config=config, agent=agent, rollout_worker=rollout_worker, logger=logger)
+    train(config=config, agent=agent, rollout_worker=rollout_worker, logger=logger, replay_buffer=replay_buffer)
 
 
 if __name__ == '__main__':

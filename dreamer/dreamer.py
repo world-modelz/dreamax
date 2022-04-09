@@ -125,26 +125,17 @@ class Dreamer:
             self.state = (self.init_state, jnp.zeros_like(self.state[-1]))
     '''
 
+    def reset_state(self):
+        self.state = (self.init_state, jnp.zeros_like(self.state[-1]))
+
     @property
     def init_state(self):
         state = init_state(1, self.c.rssm.stochastic_size, self.c.rssm.deterministic_size,
                            self.precision.compute_dtype)
         return jax.tree_map(lambda x: x.squeeze(0), state)
 
-    def update(self):
-        reports = defaultdict(float)
-        for batch in tqdm(self.replay_buffer.sample(self.c.update_steps),
-                          leave=False, total=self.c.update_steps):
-            self.learning_states, reports = self._update(dict(batch), *self.learning_states, key=next(self.rng_seq))
-
-            # Average training metrics across update steps.
-            for k, v in reports.items():
-                reports[k] += float(v) / self.c.update_steps
-
-        return reports
-
     @functools.partial(jax.jit, static_argnums=0)
-    def _update(
+    def update(
         self,
         batch: Batch,
         model_state: LearningState,
