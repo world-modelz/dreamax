@@ -199,7 +199,7 @@ class Rollout_worker():
             if self.done:
                 rollout_episode_count += 1
 
-                print(f"DONE EPISODE   SUM REWARD: {self.sum_reward}  IN {self.episode_steps} STEPS")
+                print(f"DONE EPISODE   SUM REWARD: {self.sum_reward}  IN {self.episode_steps} STEPS    RANDOM: {random}")
 
                 # todo: LOG END OG EPISODE
 

@@ -73,7 +73,6 @@ class DreamerConfiguration(Dataclass):
     seed: int = 0
     task: str = "pendulum.swingup"
     time_limit: int = 1000
-    action_repeat: int = 2
     steps: int = 1e6
     training_steps_per_epoch: int = 2.5e4
     evaluation_steps_per_epoch: int = 1e4
