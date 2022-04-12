@@ -195,6 +195,7 @@ class Rollout_worker():
 
 # ToDo: Integrade it better wiht the RolloutWorker
 def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_worker: Rollout_worker):
+    eval_rollout_worker.reset()
     evaluation_episodes_summaries = eval_rollout_worker.do_rollout(n_episodes=config.episodes_per_evaluate)
 
     if config.render_episodes > 0:
@@ -286,6 +287,7 @@ def main():
         print(f"Loaded {steps} steps. Continuing training from {config.log_dir}")
     else:
         train_rollout_worker.do_rollout(n_steps=config.prefill, random=True)
+        train_rollout_worker.reset()
 
     while step_counter.steps < config.steps:
         with timers.timing('timers/iteration_time'):
