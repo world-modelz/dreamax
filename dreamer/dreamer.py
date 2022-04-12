@@ -53,56 +53,51 @@ class Dreamer:
         model: hk.MultiTransformed,
         actor: hk.Transformed,
         critic: hk.Transformed,
-        replay_buffer: ReplayBuffer,
         logger: TrainingLogger,
         config: DreamerConfiguration,
         precision=get_mixed_precision_policy(16),
         prefill_policy=None
     ):
+
+        self.action_space = action_space
         self.c = config
         self.rng_seq = hk.PRNGSequence(config.seed)
         self.precision = precision
-        dtype = precision.compute_dtype
+        self.dtype = precision.compute_dtype
         self.model = Learner(model, next(self.rng_seq),
                              config.model_opt, precision,
-                             obs_space.sample()[None, None].astype(dtype),
-                             action_space.sample()[None, None].astype(dtype))
+                             obs_space.sample()[None, None].astype(self.dtype),
+                             action_space.sample()[None, None].astype(self.dtype))
         features_example = jnp.concatenate(self.init_state, -1)[None]
         self.actor = Learner(actor, next(self.rng_seq), config.actor_opt,
-                             precision, features_example[None].astype(dtype))
+                             precision, features_example[None].astype(self.dtype))
         self.critic = Learner(critic, next(self.rng_seq), config.critic_opt,
-                              precision, features_example[None].astype(dtype))
-        self.replay_buffer = replay_buffer
+                              precision, features_example[None].astype(self.dtype))
         self.logger = logger
-        self.state = (self.init_state, jnp.zeros(action_space.shape, dtype))
         self.training_step = 0
         self.prefill_policy = prefill_policy or (lambda obs: action_space.sample())
 
-    def __call__(self, obs: obs, training: bool):
-        #if self.training_step <= self.c.prefill and training:
-        #    return self.prefill_policy(obs)
-
-        #if self.time_to_update and training:
-        #    self.update()
+    def __call__(self, obs: np.ndarray, state, params, training: bool = False):
 
         action, current_state = self.policy(
-            self.state[0],
-            self.state[1],
+            state[0],
+            state[1],
             obs,
             self.model.params,
             self.actor.params,
             next(self.rng_seq),
             training
         )
-        self.state = (current_state, action)
-        return np.clip(action.astype(np.float32), -1, 1)
+
+        state = (current_state, action)
+        return np.clip(action.astype(np.float32), -1, 1), state
 
     @functools.partial(jax.jit, static_argnums=(0, 7))
     def policy(
         self,
         prev_state: State,
         prev_action: Action,
-        obs: obs,
+        obs: np.ndarray,
         model_params: hk.Params,
         actor_params: hk.Params,
         key: PRNGKey,
@@ -125,8 +120,8 @@ class Dreamer:
             self.state = (self.init_state, jnp.zeros_like(self.state[-1]))
     '''
 
-    def reset_state(self):
-        self.state = (self.init_state, jnp.zeros_like(self.state[-1]))
+    def get_inital_state(self):
+        return (self.init_state, jnp.zeros(self.action_space.shape, self.dtype))
 
     @property
     def init_state(self):
@@ -143,13 +138,17 @@ class Dreamer:
         critic_state: LearningState,
         key: PRNGKey
     ) -> Tuple[Tuple[LearningState, LearningState, LearningState], dict]:
+
         key, subkey = jax.random.split(key)
         model_state, model_report, features = self.update_model(batch, model_state, subkey)
+
         key, subkey = jax.random.split(key)
-        actor_state, actor_report, (generated_features, lambda_values) = self.update_actor(
-            features, actor_state, model_state[0], critic_state[0], subkey)
+        actor_state, actor_report, (generated_features, lambda_values) = self.update_actor(features, actor_state, model_state[0], critic_state[0], subkey)
+
         critic_state, critic_report = self.update_critic(generated_features, critic_state, lambda_values)
+
         report = {**model_report, **actor_report, **critic_report}
+
         return (model_state, actor_state, critic_state), report
 
     def update_model(
@@ -171,18 +170,19 @@ class Dreamer:
             log_p_terms = terminal.log_prob(batch['terminal']).mean()
             loss_ = self.c.kl_scale * kl - log_p_obs - log_p_rews - log_p_terms
             return loss_, {
-                'agent/model/kl': kl,
-                'agent/model/post_entropy': posterior.entropy().mean(),
-                'agent/model/prior_entropy': prior.entropy().mean(),
-                'agent/model/log_p_obs': -log_p_obs,
-                'agent/model/log_p_reward': -log_p_rews,
-                'agent/model/log_p_terminal': -log_p_terms,
+                'world_model/kl': kl,
+                'world_model/post_entropy': posterior.entropy().mean(),
+                'world_model/prior_entropy': prior.entropy().mean(),
+                'world_model/log_p_obs': -log_p_obs,
+                'world_model/log_p_reward': -log_p_rews,
+                'world_model/log_p_terminal': -log_p_terms,
                 'features': features
             }
 
         grads, report = jax.grad(loss, has_aux=True)(params)
         new_state = self.model.grad_step(grads, state)
-        report['agent/model/grads'] = optax.global_norm(grads)
+        report['world_model/grads'] = optax.global_norm(grads)
+
         return new_state, report, report.pop('features')
 
     def update_actor(
@@ -193,6 +193,7 @@ class Dreamer:
         critic_params: hk.Params,
         key: PRNGKey
     ) -> Tuple[LearningState, dict, Tuple[jnp.ndarray, jnp.ndarray]]:
+
         params, opt_state = state
         _, generate_experience, *_ = self.model.apply
         policy = self.actor
@@ -206,6 +207,7 @@ class Dreamer:
             discount: float,
             lambda_: float,
         ) -> jnp.ndarray:
+
             v_lambda = next_values[:, -1] * (1.0 - terminals[:, -1])
             horizon = next_values.shape[1]
             lamda_values = jnp.empty_like(next_values)
@@ -232,9 +234,9 @@ class Dreamer:
         new_state = self.actor.grad_step(grads, state)
         entropy = policy.apply(params, features[:, 0]).entropy(seed=key).mean()
         return new_state, {
-            'agent/actor/loss': loss_,
-            'agent/actor/grads': optax.global_norm(grads),
-            'agent/actor/entropy': entropy
+            'agent/actor_loss': loss_,
+            'agent/actor_grads': optax.global_norm(grads),
+            'agent/actor_entropy': entropy
         }, aux
 
     def update_critic(
@@ -254,10 +256,11 @@ class Dreamer:
         (loss_, grads) = jax.value_and_grad(loss)(params)
         new_state = self.critic.grad_step(grads, state)
         return new_state, {
-            'agent/critic/loss': loss_,
-            'agent/critic/grads': optax.global_norm(grads)
+            'agent/critic_loss': loss_,
+            'agent/critic_grads': optax.global_norm(grads)
         }
 
+    '''
     def save(self, path):
         os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, 'checkpoint.pickle'), 'wb') as f:
@@ -271,10 +274,7 @@ class Dreamer:
             data = pickle.load(f)
         for key, obj in zip(data.keys(), [self.actor, self.critic, self.replay_buffer, self.training_step]):
             obj = data[key]
-
-    @property
-    def time_to_update(self):
-        return self.training_step > self.c.prefill and self.training_step % self.c.train_every == 0
+    '''
 
     @property
     def learning_states(self):

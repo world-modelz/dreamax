@@ -59,3 +59,28 @@ class Timers:
                     self.timers[timer]['run_times'] = []
 
         return collect_times
+
+
+class GlobalStepCounter:
+
+    def __init__(self, init_steps: int = 0):
+        self._steps = init_steps
+
+        self.lock = Lock()
+
+    def add_steps(self, additional_steps: int):
+        assert additional_steps > 0, "'additional_steps', needs to be a positive integer."
+
+        with self.lock:
+            self._steps = self._steps + additional_steps
+
+    def add_step(self):
+        with self.lock:
+            self._steps = self._steps + 1
+
+    @property
+    def steps(self) -> int:
+        with self.lock:
+            steps = self._steps
+
+        return steps

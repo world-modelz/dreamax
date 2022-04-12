@@ -17,7 +17,7 @@
     },
     "platform": "gpu",
     "jit": true,
-    "render_episodes": 0,
+    "render_episodes": 1,
     "evaluate_model": true,
     "precision": 16,
     "initialization": "glorot",
