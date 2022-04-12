@@ -151,7 +151,7 @@ class Rollout_worker():
             if self.replay_buffer is not None:
                 self.replay_buffer.store(env_transition_dict)
 
-            #ToDo: Find a better solution. Don't log it twise.
+            # ToDo: Find a better solution. Don't log it twise.
             episode_summary['obs'].append(self.obs)
             episode_summary['next_obs'].append(next_obs)
             episode_summary['action'].append(action)
@@ -203,6 +203,7 @@ def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_wo
         videos = list(map(lambda episode: episode.get('obs'), evaluation_episodes_summaries[:config.render_episodes]))
         videos = np.array(videos, copy=False)
         videos = videos.transpose([0, 1, 4, 2, 3])
+        # ToDo: Color channels are in the wrong order.
         logger.add_video(videos, steps, name='videos/overview')
 
         more_vidoes = evaluate_model(

@@ -112,14 +112,6 @@ class Dreamer:
         action = policy.sample(seed=key) if training else policy.mode(seed=key)
         return action.squeeze(0), current_state
 
-    '''
-    def observe(self, transition):
-        self.training_step += self.c.action_repeat
-        self.experience.store(transition)
-        if transition['terminal'] or transition['info'].get('TimeLimit.truncated', False):
-            self.state = (self.init_state, jnp.zeros_like(self.state[-1]))
-    '''
-
     def get_inital_state(self):
         return (self.init_state, jnp.zeros(self.action_space.shape, self.dtype))
 
@@ -259,22 +251,6 @@ class Dreamer:
             'agent/critic_loss': loss_,
             'agent/critic_grads': optax.global_norm(grads)
         }
-
-    '''
-    def save(self, path):
-        os.makedirs(path, exist_ok=True)
-        with open(os.path.join(path, 'checkpoint.pickle'), 'wb') as f:
-            pickle.dump({'actor': self.actor,
-                         'critics': self.critic,
-                         'experience': self.replay_buffer,
-                         'training_steps': self.training_step}, f)
-
-    def load(self, path):
-        with open(os.path.join(path, 'checkpoint.pickle'), 'rb') as f:
-            data = pickle.load(f)
-        for key, obj in zip(data.keys(), [self.actor, self.critic, self.replay_buffer, self.training_step]):
-            obj = data[key]
-    '''
 
     @property
     def learning_states(self):
