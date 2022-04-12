@@ -204,7 +204,7 @@ def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_wo
         videos = np.array(videos, copy=False)
         videos = videos.transpose([0, 1, 4, 2, 3])
         # ToDo: Color channels are in the wrong order.
-        logger.add_video(videos, steps, name='videos/overview')
+        logger.add_video(videos, steps, name='videos/env_render')
 
         more_vidoes = evaluate_model(
             jnp.asarray(evaluation_episodes_summaries[0]['obs']),
@@ -215,7 +215,7 @@ def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_wo
         )
 
         for vid, name in zip(more_vidoes, ('ground_truth', 'reconstructed', 'unroald')):
-            logger.add_video(np.array(vid, copy=False).transpose([0, 1, 4, 2, 3]), steps, name='videos/' + name)
+            logger.add_video(np.array(vid, copy=False).transpose([0, 1, 4, 2, 3]), steps, name='videos/world_model/' + name)
 
     avg_return = np.asarray([sum(episode['reward']) for episode in evaluation_episodes_summaries]).mean()
     avg_len = np.asarray([episode['steps'][0] for episode in evaluation_episodes_summaries]).mean()
