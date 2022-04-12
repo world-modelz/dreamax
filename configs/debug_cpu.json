@@ -2,8 +2,6 @@
     "jit": false,
     "platform": "cpu",
     "time_limit": 100,
-    "training_steps_per_epoch": 200,
-    "evaluation_steps_per_epoch": 0,
     "prefill": 100,
     "env_step_per_iter": 5,
     "updates_per_iter": 1,

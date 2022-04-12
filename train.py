@@ -94,59 +94,6 @@ def evaluate_model(obss, actions, key, model, model_params, precision):
     out = jax.tree_map(lambda x: ((x + 0.5) * 255).astype(jnp.uint8), out)
     return out
 
-'''
-def do_episode(agent, training: bool, environment, config: DreamerConfiguration, pbar, render: bool):
-    episode_summary = defaultdict(list)
-    steps = 0
-    done = False
-    obs = environment.reset()
-    while not done:
-        action = agent(obs, training)
-        next_obs, reward, done, info = environment.step(action)
-        terminal = done and not info.get('TimeLimit.truncated', False)
-
-        if training:
-            agent.observe(dict(obs=obs,
-                               next_obs=next_obs,
-                               action=action.astype(np.float32),
-                               reward=np.array(reward, np.float32),
-                               terminal=np.array(terminal, np.float32),
-                               info=info))
-
-        episode_summary['obs'].append(obs)
-        episode_summary['next_obs'].append(next_obs)
-        episode_summary['action'].append(action)
-        episode_summary['reward'].append(reward)
-        episode_summary['terminal'].append(terminal)
-        episode_summary['info'].append(info)
-        obs = next_obs
-
-        if render:
-            episode_summary['image'].append(environment.render(mode='rgb_array'))
-
-        pbar.update(config.action_repeat)
-        steps += config.action_repeat
-
-    episode_summary['steps'] = [steps]
-    return steps, episode_summary
-'''
-
-'''
-def interact(agent, environment, steps, config: DreamerConfiguration, training=True, on_episode_end=None):
-    pbar = tqdm(total=steps)
-    steps_count = 0
-    episodes = []
-    while steps_count < steps:
-        render = len(episodes) < config.render_episodes and not training
-        episode_steps, episode_summary = do_episode(agent, training, environment, config, pbar, render)
-        steps_count += episode_steps
-        episodes.append(episode_summary)
-        if on_episode_end is not None:
-            on_episode_end(episode_summary, steps_count)
-    pbar.close()
-    return steps, episodes
-'''
-
 
 class Rollout_worker():
 
@@ -275,69 +222,6 @@ def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_wo
 
     logger.add_scalars(evaluation_episodes_summaries, steps)
 
-
-"""
-def train(config: DreamerConfiguration, agent, rollout_worker: Rollout_worker, logger, replay_buffer: ReplayBuffer):
-    steps = 0
-    iterations = 0
-    metrics = defaultdict(float)
-    agent_data_path = Path(config.log_dir, 'agent_data')
-
-    if agent_data_path.exists():
-        agent.load(agent_data_path)
-        steps = agent.training_step
-        print(f"Loaded {steps} steps. Continuing training from {config.log_dir}")
-    else:
-        rollout_worker.do_rollout(n_steps=config.prefill, random=True)
-
-    while steps < config.steps:
-
-        batch_gen = replay_buffer.sample(config.updates_per_iter)
-
-        for _ in range(config.updates_per_iter):
-            sample = next(batch_gen)
-
-            agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states, key=next(agent.rng_seq))
-
-            # Average training metrics across update steps.
-            for k, v in reports.items():
-                metrics[k] += float(v) / (config.updates_per_iter * config.log_every_n_iterations)
-
-        rollout_worker.do_rollout(n_steps=config.env_step_per_iter)
-
-        if iterations != 0 and iterations % config.log_every_n_iterations == 0:
-            logger.log_metrics(metrics, steps)
-            metrics = defaultdict(float)
-
-        if iterations != 0 and iterations % config.evaluate_every_n_iterations == 0:
-            print("Evaluating.")
-            evaluation_summaries = evaluate(agent, environment, logger, config, steps)
-            training_summary.update(evaluation_summaries)
-
-        steps += config.env_step_per_iter
-        iterations += 1
-
-        '''
-        print("Performing a training epoch.")
-
-        _on_episode_end = lambda episode_summary, steps_count: on_episode_end(episode_summary, logger=logger, global_step=steps,
-                                                                              steps_count=steps_count)
-
-        training_steps, training_episodes_summaries = interact(
-            agent, environment, config.training_steps_per_epoch, config, training=True, on_episode_end=_on_episode_end)
-
-        steps += training_steps
-        training_summary = make_summary(training_episodes_summaries, 'training')
-
-        if config.evaluation_steps_per_epoch:
-            print("Evaluating.")
-            evaluation_summaries = evaluate(agent, environment, logger, config, steps)
-            training_summary.update(evaluation_summaries)
-
-        logger.log_evaluation_summary(training_summary, steps)
-        # agent.save(agent_data_path)
-        '''
-"""
 
 def main():
     tf.config.experimental.set_visible_devices([], "GPU")

@@ -5,8 +5,6 @@
     "time_limit": 1000,
     "action_repeat": 2,
     "steps": 1e6,
-    "training_steps_per_epoch": 2.5e4,
-    "evaluation_steps_per_epoch": 1e4,
     "prefill": 10000,
     "env_step_per_iter": 5,
     "updates_per_iter": 1,
