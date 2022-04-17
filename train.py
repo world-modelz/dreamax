@@ -95,7 +95,7 @@ def evaluate_model(obss, actions, key, model, model_params, precision):
     return out
 
 
-class Rollout_worker():
+class RolloutWorker:
 
     def __init__(self, config: DreamerConfiguration, env: gym.Env, agent: Dreamer,
                  step_counter: GlobalStepCounter = None, replay_buffer: ReplayBuffer = None,
@@ -151,7 +151,7 @@ class Rollout_worker():
             if self.replay_buffer is not None:
                 self.replay_buffer.store(env_transition_dict)
 
-            # ToDo: Find a better solution. Don't log it twise.
+            # ToDo: Find a better solution. Don't log it twice.
             episode_summary['obs'].append(self.obs)
             episode_summary['next_obs'].append(next_obs)
             episode_summary['action'].append(action)
@@ -193,8 +193,8 @@ class Rollout_worker():
         return episodes
 
 
-# ToDo: Integrade it better wiht the RolloutWorker
-def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_worker: Rollout_worker):
+# ToDo: Integrate it better with the RolloutWorker
+def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_worker: RolloutWorker):
     eval_rollout_worker.reset()
     evaluation_episodes_summaries = eval_rollout_worker.do_rollout(n_episodes=config.episodes_per_evaluate)
 
@@ -278,9 +278,9 @@ def main():
                      'timers/iteration_time'])
     step_counter = GlobalStepCounter()
 
-    train_rollout_worker = Rollout_worker(config=config, env=environment, agent=agent, step_counter=step_counter,
+    train_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent, step_counter=step_counter,
                                           replay_buffer=replay_buffer, logger=logger)
-    eval_rollout_worker = Rollout_worker(config=config, env=environment, agent=agent)
+    eval_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent)
 
     if agent_data_path.exists():
         agent.load(agent_data_path)

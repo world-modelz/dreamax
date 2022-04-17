@@ -8,17 +8,17 @@ from dreamer.configuration import Dataclass, DreamerConfiguration
 class TestConfiguration(unittest.TestCase):
     def test_read(self):
 
-        class Test_a(Dataclass):
+        class TestA(Dataclass):
             a: int = 5
             b: list = [7, 7]
 
-        class Test_b(Test_a):
+        class TestB(TestA):
             a: int = 33
-            x: Test_a = Test_a()
+            x: TestA = TestA()
 
-        # Inti configs with default params.
-        test_a = Test_a()
-        test_b = Test_b()
+        # Init configs with default params.
+        test_a = TestA()
+        test_b = TestB()
 
         # Test default params in configs.
         self.assertEqual(test_a.a, 5)

@@ -3,11 +3,6 @@ from threading import Lock
 
 from tensorboardX import SummaryWriter
 
-#SOME HOW IT NEVER INSTALES FOR ME IN DOCKER.
-#ToDo: Fix it not being in docker despite it being in the requirements.txt
-import pip
-pip.main(['install', 'moviepy'])
-
 
 class TrainingLogger:
     def __init__(self, log_dir):

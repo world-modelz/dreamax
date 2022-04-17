@@ -37,7 +37,7 @@ class ZHeadLayer(hk.Module):
         x = hk.Linear(self.config.hidden, name='h2', w_init=initializer(self.initialization))(x)
         x = jnn.elu(x)
 
-        # Creat Dist
+        # Create Dist
         x = hk.Linear(self.config.stochastic_size * 2, name='h3', w_init=initializer(self.initialization))(x)
         mean, stddev = jnp.split(x, 2, -1)
         stddev = jnn.softplus(stddev) + 0.1
@@ -68,7 +68,7 @@ class ZLayer(hk.Module):
         x = hk.Linear(self.config.hidden, name='h1', w_init=initializer(self.initialization))(cat)
         x = jnn.elu(x)
 
-        # Creat Dist
+        # Create Dist
         x = hk.Linear(self.config.stochastic_size * 2, name='h2', w_init=initializer(self.initialization))(x)
         mean, stddev = jnp.split(x, 2, -1)
         stddev = jnn.softplus(stddev) + 0.1
@@ -145,7 +145,7 @@ class RSSM(hk.Module):
                               self.config.rssm.deterministic_size,))
         state = init_state(obss.shape[0], self.config.rssm.stochastic_size, self.config.rssm.deterministic_size)
 
-        # Unroll over sequenz
+        # Unroll over sequence
         for t in range(obss.shape[1]):
             (z_head_dist, z_dist), state = self.__call__(state, actions[:, t], obss[:, t])
 
