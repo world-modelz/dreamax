@@ -280,7 +280,8 @@ def main():
 
     train_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent, step_counter=step_counter,
                                           replay_buffer=replay_buffer, logger=logger)
-    eval_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent)
+    if config.evaluate_every_n_iterations > 0:
+        eval_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent)
 
     if agent_data_path.exists():
         agent.load(agent_data_path)
