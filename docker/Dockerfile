@@ -1,6 +1,9 @@
-#FROM nvidia/cuda:11.5.1-cudnn8-devel-ubuntu20.04
-#FROM nvidia/cuda:11.4.0-cudnn8-devel-ubuntu20.04
-FROM nvidia/cuda:11.4.2-cudnn8-devel-ubuntu20.04
+# list of nvidia/cuda docker tags: https://hub.docker.com/r/nvidia/cuda/tags
+# current pip version of jaxlib: https://pypi.org/project/jaxlib/
+
+#FROM nvidia/cuda:11.4.2-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.6.0-cudnn8-devel-ubuntu20.04
+
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -9,7 +12,7 @@ ENV IMG_NAME=11.4.0-devel-ubuntu20.04 \
     # declare what jaxlib tag to use
     # if a CI/CD system is expected to pass in these arguments
     # the dockerfile should be modified accordingly
-    JAXLIB_VERSION=0.3.2
+    JAXLIB_VERSION=0.3.7
 
 ENV MUJOCO_GL=osmesa
 ENV XLA_PYTHON_CLIENT_MEM_FRACTION=0.9

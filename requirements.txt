@@ -1,12 +1,13 @@
+jax==0.3.7
+jaxlib==0.3.7+cuda11.cudnn82
+git+https://github.com/deepmind/chex.git@7552dfcbe7748caf84c9074fcb61e3154b8f1dc6
 dm-haiku==0.0.6
-jax==0.3.4
-jaxlib==0.3.2+cuda11.cudnn82
-optax==0.1.1
+optax==0.1.2
 numpy==1.22.3
 Pillow==9.0.1   # newer Pillow==9.1.0 emits sampling deprecation warnings with gym 0.23.1
 scipy==1.8.0
-setuptools==45.2.0
-typing_extensions==4.1.1
+setuptools==62.1.0
+typing_extensions==4.2.0
 gym==0.23.1
 gym-notices==0.0.6
 dm-control==1.0.0
