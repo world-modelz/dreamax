@@ -309,10 +309,11 @@ def main():
             with timers.timing('timers/wait_for_rollout'):
                 train_rollout_worker.do_rollout(n_steps=config.env_step_per_iter)
 
-            if iterations != 0 and iterations % config.evaluate_every_n_iterations == 0:
-                with timers.timing('timers/wait_for_eval'):
-                    print("Evaluating.")
-                    evaluate(agent, logger, config, step_counter.steps, eval_rollout_worker)
+            if config.evaluate_every_n_iterations > 0:
+                if iterations != 0 and iterations % config.evaluate_every_n_iterations == 0:
+                    with timers.timing('timers/wait_for_eval'):
+                        print("Evaluating.")
+                        evaluate(agent, logger, config, step_counter.steps, eval_rollout_worker)
 
             if iterations != 0 and iterations % config.log_every_n_iterations == 0:
                 metrics.update(timers.collect_times())
