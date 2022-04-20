@@ -243,8 +243,10 @@ def main():
     jax.config.update('jax_platform_name', config.platform)
 
     print('Available devices:')
-    for device in jax.devices():
+    for device in set.union(set(jax.devices('cpu')), set(jax.devices())):
         print(device)
+
+    print('\n')
 
     if not config.jit:
         jax.config.update('jax_disable_jit', True)
@@ -263,14 +265,17 @@ def main():
     replay_buffer = ReplayBuffer(config=config.replay, obs_space=environment.observation_space,
                                  action_space=environment.action_space,  precision=config.precision, seed=config.seed)
 
-    agent = Dreamer(
+    train_agent = Dreamer(
         obs_space=environment.observation_space, action_space=environment.action_space,
         model=create_model(config, environment.observation_space),
         actor=create_actor(config, environment.action_space),
         critic=create_critic(config),
         logger=logger, config=config,
-        precision=get_mixed_precision_policy(config.precision)
+        precision=get_mixed_precision_policy(config.precision),
+        is_training_instance=True
     )
+
+    master_params = jax.tree_map(lambda x: jax.device_put(x, device=jax.devices('cpu')[0]), train_agent.params)
 
     iterations = 0
     metrics = defaultdict(float)
@@ -279,15 +284,15 @@ def main():
                      'timers/iteration_time'])
     step_counter = GlobalStepCounter()
 
-    train_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent, step_counter=step_counter,
+    train_rollout_worker = RolloutWorker(config=config, env=environment, agent=train_agent, step_counter=step_counter,
                                           replay_buffer=replay_buffer, logger=logger)
     if config.evaluate_every_n_iterations > 0:
         eval_rollout_worker = RolloutWorker(config=config, env=create_env(domain, task, config.time_limit, config.seed),
-                                            agent=agent)
+                                            agent=train_agent)
 
     if agent_data_path.exists():
-        agent.load(agent_data_path)
-        steps = agent.training_step
+        train_agent.load(agent_data_path)
+        steps = train_agent.training_step
         print(f"Loaded {steps} steps. Continuing training from {config.log_dir}")
     else:
         train_rollout_worker.do_rollout(n_steps=config.prefill, random=True)
@@ -302,11 +307,13 @@ def main():
             with timers.timing('timers/training_time'):
                 for _ in range(config.updates_per_iter):
                     sample = next(batch_gen)
-                    reports = agent.update(batch=dict(sample), key=next(agent.rng_seq))
+                    reports = train_agent.update(batch=dict(sample), key=next(train_agent.rng_seq))
 
                     # Average training metrics across update steps.
                     for k, v in reports.items():
                         metrics[k] += float(v) / (config.updates_per_iter * config.log_every_n_iterations)
+
+            master_params = jax.tree_map(lambda x: jax.device_put(x, device=jax.devices('cpu')[0]), train_agent.params)
 
             with timers.timing('timers/wait_for_rollout'):
                 train_rollout_worker.do_rollout(n_steps=config.env_step_per_iter)
@@ -315,7 +322,7 @@ def main():
                 if iterations != 0 and iterations % config.evaluate_every_n_iterations == 0:
                     with timers.timing('timers/wait_for_eval'):
                         print("Evaluating.")
-                        evaluate(agent, logger, config, step_counter.steps, eval_rollout_worker)
+                        evaluate(train_agent, logger, config, step_counter.steps, eval_rollout_worker)
 
             if iterations != 0 and iterations % config.log_every_n_iterations == 0:
                 metrics.update(timers.collect_times())
