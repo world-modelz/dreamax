@@ -9,6 +9,7 @@ from tqdm import tqdm
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Dict, Tuple, Union
+import datetime
 
 import tensorflow as tf
 import jax
@@ -231,13 +232,18 @@ def main():
     args = parse_args()
 
     config = DreamerConfiguration()
-    for config_path in args.configs:
-        print(f'Loading configuration: "{config_path}"')
-        with open(config_path, 'r') as f:
-            json_config = json.load(f)
-            config.update(json_config)
+    if args.configs:
+        for config_path in args.configs:
+            print(f'Loading configuration: "{config_path}"')
+            with open(config_path, 'r') as f:
+                json_config = json.load(f)
+                config.update(json_config)
 
     np.random.seed(config.seed)
+
+    if config.log_dir is None:
+        print("INFO: No log dir was specified, create a new one under './results/'")
+        config.log_dir = f"./results/{datetime.datetime.now():%Y-%m-%d %H:%M:%S}"
 
     jax.config.update('jax_platform_name', config.platform)
 
