@@ -67,7 +67,7 @@ def create_critic(config: DreamerConfiguration):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--configs', nargs='+', default=['configs/dreamer_v2.json'])
+    parser.add_argument('--configs', nargs='+')
     args = parser.parse_args()
     return args
 
