@@ -15,6 +15,7 @@ from tensorflow_probability.substrates import jax as tfp
 from tqdm import tqdm
 
 from dreamer.configuration import DreamerConfiguration
+from dreamer.learner import Learner, LearningState
 from dreamer.replay_buffer import ReplayBuffer
 from dreamer.rssm import obs, init_state
 from dreamer.logger import TrainingLogger
@@ -26,7 +27,6 @@ Action = jnp.ndarray
 obs = np.ndarray
 Batch = Mapping[str, np.ndarray]
 tfd = tfp.distributions
-LearningState = Tuple[hk.Params, optax.OptState]
 
 
 def get_mixed_precision_policy(precision):
@@ -56,57 +56,41 @@ class Dreamer:
         logger: TrainingLogger,
         config: DreamerConfiguration,
         precision=get_mixed_precision_policy(16),
-        is_training_instance: bool = True,
+        prefill_policy=None
     ):
 
         self.action_space = action_space
-        self.config = config
+        self.c = config
         self.rng_seq = hk.PRNGSequence(config.seed)
         self.precision = precision
         self.dtype = precision.compute_dtype
-        self.is_training_instance = is_training_instance
-
-        self.params = {}
-        self.opt_state = {}
-
-        features_example = jnp.concatenate(self.init_state, -1)[None, None].astype(self.dtype)
-        env_space_example = (obs_space.sample()[None, None].astype(self.dtype),
+        self.model = Learner(model, next(self.rng_seq),
+                             config.model_opt, precision,
+                             obs_space.sample()[None, None].astype(self.dtype),
                              action_space.sample()[None, None].astype(self.dtype))
-
-        self.model = model
-        self.actor = actor
-        self.critic = critic
-
-        self.params['model'] = self.model.init(next(self.rng_seq), *env_space_example)
-        self.params['actor'] = self.actor.init(next(self.rng_seq), features_example)
-
-        if self.is_training_instance:
-            self.params['critic'] = self.critic.init(next(self.rng_seq), features_example)
-
-            self.model_optimizer = optax.chain(
-                optax.clip_by_global_norm(self.config.model_opt.clip),
-                optax.scale_by_adam(eps=self.config.model_opt.eps),
-                optax.scale(-self.config.model_opt.lr),
-            )
-
-            self.actor_optimizer = optax.chain(
-                optax.clip_by_global_norm(self.config.actor_opt.clip),
-                optax.scale_by_adam(eps=self.config.actor_opt.eps),
-                optax.scale(-self.config.actor_opt.lr),
-            )
-
-            self.critic_optimizer = optax.chain(
-                optax.clip_by_global_norm(self.config.actor_opt.clip),
-                optax.scale_by_adam(eps=self.config.actor_opt.eps),
-                optax.scale(-self.config.actor_opt.lr),
-            )
-
-            self.opt_state['model'] = self.model_optimizer.init(self.params['model'])
-            self.opt_state['actor'] = self.actor_optimizer.init(self.params['actor'])
-            self.opt_state['critic'] = self.actor_optimizer.init(self.params['critic'])
-
+        features_example = jnp.concatenate(self.init_state, -1)[None]
+        self.actor = Learner(actor, next(self.rng_seq), config.actor_opt,
+                             precision, features_example[None].astype(self.dtype))
+        self.critic = Learner(critic, next(self.rng_seq), config.critic_opt,
+                              precision, features_example[None].astype(self.dtype))
         self.logger = logger
         self.training_step = 0
+        self.prefill_policy = prefill_policy or (lambda obs: action_space.sample())
+
+    def __call__(self, obs: np.ndarray, state, params, training: bool = False):
+
+        action, current_state = self.policy(
+            state[0],
+            state[1],
+            obs,
+            self.model.params,
+            self.actor.params,
+            next(self.rng_seq),
+            training
+        )
+
+        state = (current_state, action)
+        return np.clip(action.astype(np.float32), -1, 1), state
 
     @functools.partial(jax.jit, static_argnums=(0, 7))
     def policy(
@@ -114,26 +98,26 @@ class Dreamer:
         prev_state: State,
         prev_action: Action,
         obs: np.ndarray,
+        model_params: hk.Params,
+        actor_params: hk.Params,
         key: PRNGKey,
         training=True
     ):
         filter_, *_ = self.model.apply
         key, subkey = jax.random.split(key)
         obs = obs.astype(self.precision.compute_dtype)
-        _, current_state = filter_(self.params['model'], key, prev_state, prev_action, obs)
+        _, current_state = filter_(model_params, key, prev_state, prev_action, obs)
         features = jnp.concatenate(current_state, -1)[None]
-        policy = self.actor.apply(self.params['actor'], features)
+        policy = self.actor.apply(actor_params, features)
         action = policy.sample(seed=key) if training else policy.mode(seed=key)
-        action = jnp.squeeze(action, axis=0)
-
-        return jnp.clip(action.astype(jnp.float32), -1, 1), current_state, action
+        return action.squeeze(0), current_state
 
     def get_inital_state(self):
-        return self.init_state, jnp.zeros(self.action_space.shape, self.dtype)
+        return (self.init_state, jnp.zeros(self.action_space.shape, self.dtype))
 
     @property
     def init_state(self):
-        state = init_state(1, self.config.rssm.stochastic_size, self.config.rssm.deterministic_size,
+        state = init_state(1, self.c.rssm.stochastic_size, self.c.rssm.deterministic_size,
                            self.precision.compute_dtype)
         return jax.tree_map(lambda x: x.squeeze(0), state)
 
@@ -141,41 +125,43 @@ class Dreamer:
     def update(
         self,
         batch: Batch,
+        model_state: LearningState,
+        actor_state: LearningState,
+        critic_state: LearningState,
         key: PRNGKey
-    ) -> dict:
-
-        assert self.is_training_instance, "Update function can only be called with training instances."
+    ) -> Tuple[Tuple[LearningState, LearningState, LearningState], dict]:
 
         key, subkey = jax.random.split(key)
-        model_report, features = self.update_model(batch, subkey)
+        model_state, model_report, features = self.update_model(batch, model_state, subkey)
 
         key, subkey = jax.random.split(key)
-        actor_report, (generated_features, lambda_values) = self.update_actor(features,  subkey)
-        critic_report = self.update_critic(generated_features, lambda_values)
+        actor_state, actor_report, (generated_features, lambda_values) = self.update_actor(features, actor_state, model_state[0], critic_state[0], subkey)
+
+        critic_state, critic_report = self.update_critic(generated_features, critic_state, lambda_values)
 
         report = {**model_report, **actor_report, **critic_report}
-        return report
+
+        return (model_state, actor_state, critic_state), report
 
     def update_model(
         self,
         batch: Batch,
+        state: LearningState,
         key: PRNGKey
-    ) -> Tuple[dict, jnp.ndarray]:
-
-        assert self.is_training_instance, "Update function can only be called with training instances."
+    ) -> Tuple[LearningState, dict, jnp.ndarray]:
+        params, opt_state = state
 
         def loss(params: hk.Params) -> Tuple[float, dict]:
             _, _, infer, _ = self.model.apply
             outputs_infer = infer(params, key, batch['obs'], batch['action'])
             (prior, posterior), features, decoded, reward, terminal = outputs_infer
-            kl = jnp.maximum(tfd.kl_divergence(posterior, prior).mean(), self.config.free_kl)
+            kl = jnp.maximum(tfd.kl_divergence(posterior, prior).mean(), self.c.free_kl)
             obs_f32 = batch['obs'].astype(jnp.float32)
             log_p_obs = decoded.log_prob(obs_f32).mean()
             log_p_rews = reward.log_prob(batch['reward']).mean()
             log_p_terms = terminal.log_prob(batch['terminal']).mean()
-            loss_ = self.config.kl_scale * kl - log_p_obs - log_p_rews - log_p_terms
-
-            metrics = {
+            loss_ = self.c.kl_scale * kl - log_p_obs - log_p_rews - log_p_terms
+            return loss_, {
                 'world_model/kl': kl,
                 'world_model/post_entropy': posterior.entropy().mean(),
                 'world_model/prior_entropy': prior.entropy().mean(),
@@ -185,24 +171,22 @@ class Dreamer:
                 'features': features
             }
 
-            return loss_, metrics
+        grads, report = jax.grad(loss, has_aux=True)(params)
+        new_state = self.model.grad_step(grads, state)
+        report['world_model/grads'] = optax.global_norm(grads)
 
-        grads, metrics = jax.grad(loss, has_aux=True)(self.params['model'])
-        metrics['world_model/grads'] = optax.global_norm(grads)
-
-        self.params['model'], self.opt_state['model'] = self.grad_step(grads, self.model_optimizer,
-                                                                       self.params['model'], self.opt_state['model'])
-
-        return metrics, metrics.pop('features')
+        return new_state, report, report.pop('features')
 
     def update_actor(
         self,
         features: jnp.ndarray,
+        state: LearningState,
+        model_params: hk.Params,
+        critic_params: hk.Params,
         key: PRNGKey
-    ) -> Tuple[dict, Tuple[jnp.ndarray, jnp.ndarray]]:
+    ) -> Tuple[LearningState, dict, Tuple[jnp.ndarray, jnp.ndarray]]:
 
-        assert self.is_training_instance, "Update function can only be called with training instances."
-
+        params, opt_state = state
         _, generate_experience, *_ = self.model.apply
         policy = self.actor
         critic = self.critic.apply
@@ -226,65 +210,52 @@ class Dreamer:
             return lamda_values
 
         def loss(params: hk.Params):
-            generated_features, reward, terminal = generate_experience(self.params['model'], key, flattened_features, policy, params)
-
-            next_values = critic(self.params['critic'], generated_features[:, 1:]).mean()
+            generated_features, reward, terminal = generate_experience(
+                model_params, key, flattened_features, policy, params)
+            next_values = critic(critic_params, generated_features[:, 1:]).mean()
             lambda_values = compute_lambda_values(next_values,
                                                   reward.mean(),
                                                   terminal.mean(),
-                                                  self.config.discount,
-                                                  self.config.lambda_)
-            discount = discount_(self.config.discount, self.config.imag_horizon - 1)
+                                                  self.c.discount,
+                                                  self.c.lambda_)
+            discount = discount_(self.c.discount, self.c.imag_horizon - 1)
             loss_ = (-lambda_values * discount).mean()
             return loss_, (generated_features, lambda_values)
 
-        (loss_, aux), grads = jax.value_and_grad(loss, has_aux=True)(self.params['actor'])
-        self.params['actor'], self.opt_state['actor'] = self.grad_step(grads, self.actor_optimizer,
-                                                                       self.params['actor'], self.opt_state['actor'])
-
-        entropy = policy.apply(self.params['actor'], features[:, 0]).entropy(seed=key).mean()
-
-        metrics = {
+        (loss_, aux), grads = jax.value_and_grad(loss, has_aux=True)(params)
+        new_state = self.actor.grad_step(grads, state)
+        entropy = policy.apply(params, features[:, 0]).entropy(seed=key).mean()
+        return new_state, {
             'agent/actor_loss': loss_,
             'agent/actor_grads': optax.global_norm(grads),
             'agent/actor_entropy': entropy
-        }
-
-        return metrics, aux
+        }, aux
 
     def update_critic(
         self,
         features: jnp.ndarray,
+        state: LearningState,
         lambda_values: jnp.ndarray
-    ) -> dict:
-
-        assert self.is_training_instance, "Update function can only be called with training instances."
+    ) -> Tuple[LearningState, dict]:
+        params, opt_state = state
 
         def loss(params: hk.Params) -> float:
             values = self.critic.apply(params, features[:, :-1])
             targets = jax.lax.stop_gradient(lambda_values)
-            discount = discount_(self.config.discount, self.config.imag_horizon - 1)
+            discount = discount_(self.c.discount, self.c.imag_horizon - 1)
             return -(values.log_prob(targets) * discount).mean()
 
-        (loss_, grads) = jax.value_and_grad(loss)(self.params['critic'])
-        self.params['critic'], self.opt_state['critic'] = self.grad_step(grads, self.critic_optimizer,
-                                                                         self.params['critic'],
-                                                                         self.opt_state['critic'])
-
-        metrics = {
+        (loss_, grads) = jax.value_and_grad(loss)(params)
+        new_state = self.critic.grad_step(grads, state)
+        return new_state, {
             'agent/critic_loss': loss_,
             'agent/critic_grads': optax.global_norm(grads)
         }
 
-        return metrics
+    @property
+    def learning_states(self):
+        return (self.model.learning_state, self.actor.learning_state, self.critic.learning_state)
 
-    def grad_step(self, grads, optimizer: optax.GradientTransformation, params: hk.Params, opt_state: optax.OptState)\
-            -> [hk.Params, optax.OptState]:
-
-        unscaled_grads = self.precision.cast_to_param(grads)
-        updates, new_opt_state = optimizer.update(unscaled_grads, opt_state)
-        new_params = optax.apply_updates(params, updates)
-        grads_finite = jmp.all_finite(unscaled_grads)
-        params, opt_state = jmp.select_tree(grads_finite, (new_params, new_opt_state), (params, opt_state))
-
-        return params, opt_state
+    @learning_states.setter
+    def learning_states(self, states):
+        (self.model.learning_state, self.actor.learning_state, self.critic.learning_state) = states
