@@ -169,7 +169,7 @@ class RolloutWorker:
             self.obs = next_obs
             self.sum_reward += reward
             rollout_step_count += self.config.action_repeat
-            self.episode_steps += 1
+            self.episode_steps += self.config.action_repeat
 
             if self.is_training and self.step_counter is not None:
                 self.step_counter.add_step(self.config.action_repeat)
