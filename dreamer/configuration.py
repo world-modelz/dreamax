@@ -77,6 +77,7 @@ class DreamerConfiguration(Dataclass):
     prefill: int = 10000
     env_step_per_iter: int = 5
     updates_per_iter: int = 1
+    action_repeat: int = 2
     log_every_n_iterations: int = 20
     evaluate_every_n_iterations: int = 100
     episodes_per_evaluate: int = 10

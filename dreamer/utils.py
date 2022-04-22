@@ -74,9 +74,9 @@ class GlobalStepCounter:
         with self.lock:
             self._steps = self._steps + additional_steps
 
-    def add_step(self):
+    def add_step(self, add: int = 1):
         with self.lock:
-            self._steps = self._steps + 1
+            self._steps = self._steps + add
 
     @property
     def steps(self) -> int:

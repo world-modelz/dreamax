@@ -140,7 +140,12 @@ class RolloutWorker:
             else:
                 action, self.state = self.agent(self.obs, self.state, self.is_training)
 
-            next_obs, reward, self.done, info = self.env.step(action)
+            reward = 0
+            repeat = 0
+
+            while repeat < self.config.action_repeat and not self.done:
+                next_obs, _reward, self.done, info = self.env.step(action)
+                reward += _reward
 
             env_transition_dict = dict(obs=self.obs,
                                        next_obs=next_obs,
@@ -162,11 +167,11 @@ class RolloutWorker:
 
             self.obs = next_obs
             self.sum_reward += reward
-            rollout_step_count += 1
+            rollout_step_count += self.config.action_repeat
             self.episode_steps += 1
 
             if self.is_training and self.step_counter is not None:
-                self.step_counter.add_step()
+                self.step_counter.add_step(self.config.action_repeat)
 
             if self.done:
                 rollout_episode_count += 1
