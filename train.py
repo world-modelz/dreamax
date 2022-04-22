@@ -146,6 +146,7 @@ class RolloutWorker:
             while repeat < self.config.action_repeat and not self.done:
                 next_obs, _reward, self.done, info = self.env.step(action)
                 reward += _reward
+                repeat += 1
 
             env_transition_dict = dict(obs=self.obs,
                                        next_obs=next_obs,
