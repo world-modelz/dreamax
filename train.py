@@ -242,8 +242,9 @@ def main():
     np.random.seed(config.seed)
 
     if config.log_dir is None:
-        print("INFO: No log dir was specified, create a new one under './results/'")
-        config.log_dir = f"./results/{datetime.datetime.now():%Y-%m-%d %H:%M:%S}"
+        log_dir_path = f'./results/{datetime.datetime.utcnow():%Y-%m-%d_%H%M%S}'
+        print(f"INFO: No log dir was specified, using '{log_dir_path}'")
+        config.log_dir = log_dir_path
 
     jax.config.update('jax_platform_name', config.platform)
 
