@@ -315,7 +315,7 @@ def main():
             with timers.timing('timers/training_time'):
 
                 with timers.timing('timers/wait_for_data'):
-                    sample = replay_buffer.sample(config.updates_per_iter)
+                    sample = replay_buffer.sample(config.update_steps)
 
                 for batch in tqdm(sample, leave=False, total=config.update_steps):
                     agent.learning_states, metrics = agent._update(dict(batch), *agent.learning_states, key=next(agent.rng_seq))
