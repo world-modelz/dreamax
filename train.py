@@ -138,7 +138,7 @@ class RolloutWorker:
             if random:
                 action = self.action_space.sample()
             else:
-                action, self.state = self.agent.__call__(self.obs, self.state, self.is_training)
+                action, self.state = self.agent(self.obs, self.state, self.is_training)
 
             reward = 0
             repeat = 0
@@ -313,8 +313,11 @@ def main():
             metrics = defaultdict(float)
 
             with timers.timing('timers/training_time'):
-                for batch in tqdm(replay_buffer.sample(config.update_steps),
-                                  leave=False, total=config.update_steps):
+
+                with timers.timing('timers/wait_for_data'):
+                    sample = replay_buffer.sample(config.updates_per_iter)
+
+                for batch in tqdm(sample, leave=False, total=config.update_steps):
                     agent.learning_states, metrics = agent._update(dict(batch), *agent.learning_states, key=next(agent.rng_seq))
 
                     # Average training metrics across update steps.
