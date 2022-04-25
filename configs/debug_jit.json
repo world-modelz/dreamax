@@ -1,0 +1,18 @@
+{
+    "jit": true,
+    "time_limit": 100,
+    "prefill": 100,
+    "env_step_per_iter": 5,
+    "updates_per_iter": 1,
+    "render_episodes": 1,
+    "training_steps_per_epoch": 200,
+    "evaluation_steps_per_epoch": 0,
+    "log_every_n_iterations": 2,
+    "evaluate_every_n_iterations": 1,
+    "episodes_per_evaluate": 1,
+    "replay": {
+        "capacity": 10,
+        "batch_size": 10,
+        "sequence_length": 8
+    }
+}

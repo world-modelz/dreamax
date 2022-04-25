@@ -53,16 +53,19 @@ class Dreamer:
         model: hk.MultiTransformed,
         actor: hk.Transformed,
         critic: hk.Transformed,
-        experience: ReplayBuffer,
-        logger: TrainingLogger,
+        #experience: ReplayBuffer,
+        #logger: TrainingLogger,
         config: DreamerConfiguration,
         precision=get_mixed_precision_policy(16),
         prefill_policy=None
     ):
+
+        self.action_space = action_space
         self.c = config
         self.rng_seq = hk.PRNGSequence(config.seed)
         self.precision = precision
         dtype = precision.compute_dtype
+        self.dtype = dtype
         self.model = Learner(model, next(self.rng_seq),
                              config.model_opt, precision,
                              observation_space.sample()[None, None].astype(dtype),
@@ -72,28 +75,31 @@ class Dreamer:
                              precision, features_example[None].astype(dtype))
         self.critic = Learner(critic, next(self.rng_seq), config.critic_opt,
                               precision, features_example[None].astype(dtype))
-        self.experience = experience
-        self.logger = logger
+        #self.experience = experience
+        #self.logger = logger
         self.state = (self.init_state, jnp.zeros(action_space.shape, dtype))
         self.training_step = 0
         self.prefill_policy = prefill_policy or (lambda observation: action_space.sample())
 
-    def __call__(self, observation: Observation, training: bool):
-        if self.training_step <= self.c.prefill and training:
-            return self.prefill_policy(observation)
-        if self.time_to_update and training:
-            self.update()
+    def __call__(self, observation: Observation, state, training: bool):
+
+        #if self.training_step <= self.c.prefill and training:
+        #    return self.prefill_policy(observation)
+
+        #if self.time_to_update and training:
+        #    self.update()
+
         action, current_state = self.policy(
-            self.state[0],
-            self.state[1],
+            state[0],
+            state[1],
             observation,
             self.model.params,
             self.actor.params,
             next(self.rng_seq),
             training
         )
-        self.state = (current_state, action)
-        return np.clip(action.astype(np.float32), -1, 1)
+        #self.state = (current_state, action)
+        return np.clip(action.astype(np.float32), -1, 1), (current_state, action)
 
     @functools.partial(jax.jit, static_argnums=(0, 7))
     def policy(
@@ -136,7 +142,9 @@ class Dreamer:
             # Average training metrics across update steps.
             for k, v in reports.items():
                 reports[k] += float(v) / self.c.update_steps
-        self.logger.log_metrics(reports, self.training_step)
+        #self.logger.log_metrics(reports, self.training_step)
+
+        return reports
 
     @functools.partial(jax.jit, static_argnums=0)
     def _update(
@@ -287,3 +295,6 @@ class Dreamer:
     @learning_states.setter
     def learning_states(self, states):
         (self.model.learning_state, self.actor.learning_state, self.critic.learning_state) = states
+
+    def get_inital_state(self):
+        return (self.init_state, jnp.zeros(self.action_space.shape, self.dtype))
