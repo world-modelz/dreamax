@@ -12,6 +12,9 @@ class DummyGymEnv(gym.Env):
         self.observation_space = observation_space
         self.action_space = action_space
 
+    def render(self, **kwargs):
+        return self.reset()
+
     def reset(self):
         if type(self.observation_space) == list:
             obs = [obs.sample() for obs in self.observation_space]

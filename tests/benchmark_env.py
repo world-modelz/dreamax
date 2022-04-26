@@ -8,32 +8,7 @@ import numpy as np
 import gym
 from tests.dummy_gym_env import DummyGymEnv
 from dreamer.gym_adapter import create_env
-
-
-class Stopwatch:
-    def __init__(self):
-        self.measurements = []
-        self.start()
-
-    def start(self):
-        self.start_time = time.perf_counter()
-
-    def stop(self):
-        elapsed = time.perf_counter() - self.start_time
-        self.measurements.append(elapsed)
-
-    def clear(self):
-        self.measurements.clear()
-
-    @property
-    def last(self):
-        return self.measurements[-1]
-
-    @contextmanager
-    def measure(self):
-        self.start()
-        yield
-        self.stop()
+from dreamer.utils import Stopwatch
 
 
 def rollout(env, num_steps):
@@ -87,9 +62,9 @@ def main():
     logger = logging.getLogger('benchmark')
     logger.setLevel(logging.INFO)
 
-    env = DummyGymEnv(observation_space=gym.spaces.Box(-np.inf, np.inf, (64, 64, 3), dtype=np.float32),
-                          action_space=gym.spaces.Box(np.array([-1, -1, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1]), dtype=np.float32))
-    benchmark_env('Dummy', env, logger)
+    # env = DummyGymEnv(observation_space=gym.spaces.Box(-np.inf, np.inf, (64, 64, 3), dtype=np.float32),
+    #                       action_space=gym.spaces.Box(np.array([-1, -1, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1]), dtype=np.float32))
+    # benchmark_env('Dummy', env, logger)
 
     env = make_atari("BreakoutNoFrameskip-v4")
     benchmark_env('BreakoutNoFrameskip-v4', env, logger)
