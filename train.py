@@ -140,13 +140,9 @@ class RolloutWorker:
             else:
                 action, self.state = self.agent(self.obs, self.state, self.is_training)
 
-            reward = 0
-            repeat = 0
+            next_obs, reward, self.done, info = self.env.step(action)
 
-            while repeat < self.config.action_repeat and not self.done:
-                next_obs, _reward, self.done, info = self.env.step(action)
-                reward += _reward
-                repeat += 1
+            repeat = info.get('repeat', 1)
 
             env_transition_dict = dict(observation=self.obs,
                                        next_observation=next_obs,
@@ -168,11 +164,11 @@ class RolloutWorker:
 
             self.obs = next_obs
             self.sum_reward += reward
-            rollout_step_count += self.config.action_repeat
-            self.episode_steps += self.config.action_repeat
+            rollout_step_count += repeat
+            self.episode_steps += repeat
 
             if self.is_training and self.step_counter is not None:
-                self.step_counter.add_step(self.config.action_repeat)
+                self.step_counter.add_step(repeat)
 
             if self.done:
                 rollout_episode_count += 1
@@ -312,17 +308,21 @@ def main():
 
             metrics = defaultdict(float)
 
-            with timers.timing('timers/training_time'):
 
-                with timers.timing('timers/wait_for_data'):
+
+            with timers.timing('timers/wait_for_data'):
                     sample = replay_buffer.sample(config.update_steps)
 
-                for batch in tqdm(sample, leave=False, total=config.update_steps):
+            for batch in tqdm(sample, leave=False, total=config.update_steps):
+
+                with timers.timing('timers/training_time'):
                     agent.learning_states, metrics = agent._update(dict(batch), *agent.learning_states, key=next(agent.rng_seq))
 
-                    # Average training metrics across update steps.
-                    for k, v in metrics.items():
+                # Average training metrics across update steps.
+                for k, v in metrics.items():
                         metrics[k] += float(v) / config.update_steps
+
+
 
             '''
             with timers.timing('timers/wait_for_data'):

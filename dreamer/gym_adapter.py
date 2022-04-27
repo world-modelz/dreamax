@@ -61,11 +61,15 @@ class RepeatAction(Wrapper):
 
     def step(self, action):
         total_reward = 0.0
-        for current_step in range(self.repeat):
+        repeat = 0
+        done = False
+
+        while repeat < self.repeat and not done:
             obs, reward, done, info = self.env.step(action)
             total_reward += reward
-            if done:
-                break
+            repeat += 1
+
+        info['repeat'] = repeat
         return obs, total_reward, done, info  # noqa
 
 
