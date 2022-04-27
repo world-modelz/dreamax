@@ -265,7 +265,7 @@ def main():
         hk.mixed_precision.set_policy(Decoder, policy.with_output_dtype(jnp.float32))
 
     domain, task = config.task.split('.')
-    environment = create_env(domain, task, config.time_limit, config.seed)
+    environment = create_env(domain, task, config.time_limit, config.action_repeat, config.seed)
     logger = TrainingLogger(config.log_dir)
 
     replay_buffer = ReplayBuffer(config=config.replay, observation_space=environment.observation_space,
