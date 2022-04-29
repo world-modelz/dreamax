@@ -116,7 +116,7 @@ def benchmark_env(ctx, env):
 
 
 def main():
-    ctx = mp.get_context('spawn')
+    ctx = mp.get_context('spawn')   # https://pythonspeed.com/articles/python-multiprocessing/
     #env_config = dict(env_type='atari', env_id="BreakoutNoFrameskip-v4")
     env_config = dict(
         env_type='dm_control',

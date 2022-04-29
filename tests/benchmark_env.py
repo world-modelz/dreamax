@@ -41,7 +41,8 @@ def benchmark_env(name, env, logger):
         sw = Stopwatch()
         with sw.measure():
             rollout(env, num_steps)
-        logger.info(f'num_workers: 1; num_steps: {num_steps:>4}; duration: {sw.last:>5.2f}s; total_steps: {num_steps:>5}; rate: {num_steps/sw.last:.2f} steps/s;')
+        logger.info(
+            f'num_workers: 1; num_steps: {num_steps:>4}; duration: {sw.last:>5.2f}s; total_steps: {num_steps:>5}; rate: {num_steps/sw.last:.2f} steps/s;')
 
     threads = [2, 4, 8]
     for num_workers in threads:
@@ -50,7 +51,8 @@ def benchmark_env(name, env, logger):
             with sw.measure():
                 parallel_rollout(env, num_workers, num_steps)
             total_steps = num_workers * num_steps
-            logger.info(f'num_workers: {num_workers}; num_steps: {num_steps:>4}; duration: {sw.last:>5.2f}s; total_steps: {total_steps:>5}; rate: {total_steps/sw.last:.2f} steps/s;')
+            logger.info(
+                f'num_workers: {num_workers}; num_steps: {num_steps:>4}; duration: {sw.last:>5.2f}s; total_steps: {total_steps:>5}; rate: {total_steps/sw.last:.2f} steps/s;')
 
 
 def make_atari(env_id):
