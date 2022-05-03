@@ -75,11 +75,12 @@ class DreamerConfiguration(Dataclass):
     time_limit: int = 1000
     action_repeat: int = 2
     steps: int = 1e6
-    training_steps_per_epoch: int = 2.5e4
-    evaluation_steps_per_epoch: int = 1e4
+    evaluate_every_n_iterations: int = 25
+    episodes_per_evaluate: int = 4
     prefill: int = 5000
-    train_every: int = 1000
-    update_steps: int = 100
+    env_step_per_iter: int = 1000
+    updates_per_iter: int = 100
+    log_every_n_iterations: int = 1
     replay: ReplayBufferConfig = ReplayBufferConfig()
     platform: str = 'gpu'
     jit: bool = True

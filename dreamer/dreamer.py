@@ -53,8 +53,6 @@ class Dreamer:
         model: hk.MultiTransformed,
         actor: hk.Transformed,
         critic: hk.Transformed,
-        #experience: ReplayBuffer,
-        #logger: TrainingLogger,
         config: DreamerConfiguration,
         precision=get_mixed_precision_policy(16),
         prefill_policy=None
@@ -75,19 +73,12 @@ class Dreamer:
                              precision, features_example[None].astype(dtype))
         self.critic = Learner(critic, next(self.rng_seq), config.critic_opt,
                               precision, features_example[None].astype(dtype))
-        #self.experience = experience
-        #self.logger = logger
+
         self.state = (self.init_state, jnp.zeros(action_space.shape, dtype))
         self.training_step = 0
         self.prefill_policy = prefill_policy or (lambda observation: action_space.sample())
 
     def __call__(self, observation: Observation, state, training: bool):
-
-        #if self.training_step <= self.c.prefill and training:
-        #    return self.prefill_policy(observation)
-
-        #if self.time_to_update and training:
-        #    self.update()
 
         action, current_state = self.policy(
             state[0],
@@ -98,7 +89,7 @@ class Dreamer:
             next(self.rng_seq),
             training
         )
-        #self.state = (current_state, action)
+
         return np.clip(action.astype(np.float32), -1, 1), (current_state, action)
 
     @functools.partial(jax.jit, static_argnums=(0, 7))
@@ -133,21 +124,8 @@ class Dreamer:
                            self.precision.compute_dtype)
         return jax.tree_map(lambda x: x.squeeze(0), state)
 
-    def update(self):
-        reports = defaultdict(float)
-        for batch in tqdm(self.experience.sample(self.c.update_steps),
-                          leave=False, total=self.c.update_steps):
-            self.learning_states, reports = self._update(dict(batch), *self.learning_states, key=next(self.rng_seq))
-
-            # Average training metrics across update steps.
-            for k, v in reports.items():
-                reports[k] += float(v) / self.c.update_steps
-        #self.logger.log_metrics(reports, self.training_step)
-
-        return reports
-
     @functools.partial(jax.jit, static_argnums=0)
-    def _update(
+    def update(
         self,
         batch: Batch,
         model_state: LearningState,
@@ -269,24 +247,6 @@ class Dreamer:
             'agent/critic/loss': loss_,
             'agent/critic/grads': optax.global_norm(grads)
         }
-
-    def save(self, path):
-        os.makedirs(path, exist_ok=True)
-        with open(os.path.join(path, 'checkpoint.pickle'), 'wb') as f:
-            pickle.dump({'actor': self.actor,
-                         'critics': self.critic,
-                         'experience': self.experience,
-                         'training_steps': self.training_step}, f)
-
-    def load(self, path):
-        with open(os.path.join(path, 'checkpoint.pickle'), 'rb') as f:
-            data = pickle.load(f)
-        for key, obj in zip(data.keys(), [self.actor, self.critic, self.experience, self.training_step]):
-            obj = data[key]
-
-    @property
-    def time_to_update(self):
-        return self.training_step > self.c.prefill and self.training_step % self.c.train_every == 0
 
     @property
     def learning_states(self):
