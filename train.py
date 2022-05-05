@@ -119,7 +119,7 @@ class RolloutWorker:
         self.done = False
         self.sum_reward = 0
         self.episode_steps = 0
-        self.state = self.agent.get_inital_state()
+        self.current_state, self.larst_action = self.agent.get_inital_state()
 
     def do_rollout(self, n_steps: int = None, n_episodes: int = None, random: bool = False, render: bool = False)\
             -> List[dict]:
@@ -138,7 +138,8 @@ class RolloutWorker:
             if random:
                 action = self.action_space.sample()
             else:
-                action, self.state = self.agent(self.obs, self.state, self.is_training)
+                action, self.current_state, self.larst_action = self.agent.policy(self.current_state, self.larst_action, self.obs,
+                                                                            next(self.agent.rng_seq), self.is_training)
 
             next_obs, reward, self.done, info = self.env.step(action)
 
@@ -214,7 +215,7 @@ def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_wo
             jnp.asarray(evaluation_episodes_summaries[0]['obs']),
             jnp.asarray(evaluation_episodes_summaries[0]['action']),
             next(agent.rng_seq),
-            agent.model, agent.model.params,
+            agent.model, agent.params['model'],
             get_mixed_precision_policy(config.precision)
         )
 
@@ -295,7 +296,6 @@ def main():
                                                                           config.action_repeat, config.seed),
                                             agent=agent)
 
-
     if agent_data_path.exists():
         agent.load(agent_data_path)
         steps = agent.training_step
@@ -315,8 +315,7 @@ def main():
                     sample = next(batch_gen)
 
                 with timers.timing('timers/training_time'):
-                    agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states,
-                                                                  key=next(agent.rng_seq))
+                    reports = agent.update(dict(sample), key=next(agent.rng_seq))
 
                 # Average training metrics across update steps.
                 for k, v in reports.items():
