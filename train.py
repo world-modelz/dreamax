@@ -121,7 +121,8 @@ class RolloutWorker:
         self.episode_steps = 0
         self.state = self.agent.get_inital_state()
 
-    def do_rollout(self, n_steps: int = None, n_episodes: int = None, random: bool = False) -> List[dict]:
+    def do_rollout(self, n_steps: int = None, n_episodes: int = None, random: bool = False, render: bool = False)\
+            -> List[dict]:
 
         assert n_steps is not None or n_episodes is not None, \
             "Both 'n_steps' and 'n_episodes' are none at least one needs to be set."
@@ -161,6 +162,9 @@ class RolloutWorker:
             episode_summary['terminal'].append(self.done)
             episode_summary['info'].append(info)
 
+            if render:
+                episode_summary['render'].append(self.env.render(mode='rgb_array'))
+
             self.obs = next_obs
             self.sum_reward += reward
             rollout_step_count += repeat
@@ -198,14 +202,14 @@ class RolloutWorker:
 # ToDo: Integrate it better with the RolloutWorker
 def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_worker: RolloutWorker):
     eval_rollout_worker.reset()
-    evaluation_episodes_summaries = eval_rollout_worker.do_rollout(n_episodes=config.episodes_per_evaluate)
+    evaluation_episodes_summaries = eval_rollout_worker.do_rollout(n_episodes=config.episodes_per_evaluate, render=True)
 
     if config.render_episodes > 0:
 
-        videos = list(map(lambda episode: episode.get('obs'), evaluation_episodes_summaries[:config.render_episodes]))
+        videos = list(map(lambda episode: episode.get('render'),
+                          evaluation_episodes_summaries[:config.render_episodes]))
         videos = np.array(videos, copy=False)
         videos = videos.transpose([0, 1, 4, 2, 3])
-        # ToDo: Color channels are in the wrong order.
         logger.add_video(videos, steps, name='videos/env_render')
 
         more_vidoes = evaluate_model(
@@ -305,19 +309,20 @@ def main():
     while step_counter.steps < config.steps:
         with timers.timing('timers/iteration_time'):
 
-            with timers.timing('timers/wait_for_data'):
-                batch_gen = iter(replay_buffer.sample(config.updates_per_iter))
+            batch_gen = iter(replay_buffer.sample(config.updates_per_iter))
 
-            with timers.timing('timers/training_time'):
-                for _ in range(config.updates_per_iter):
+            for _ in range(config.updates_per_iter):
+
+                with timers.timing('timers/wait_for_data'):
                     sample = next(batch_gen)
 
+                with timers.timing('timers/training_time'):
                     agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states,
                                                                   key=next(agent.rng_seq))
 
-                    # Average training metrics across update steps.
-                    for k, v in reports.items():
-                        metrics[k] += float(v) / (config.updates_per_iter * config.log_every_n_iterations)
+                # Average training metrics across update steps.
+                for k, v in reports.items():
+                    metrics[k] += float(v) / (config.updates_per_iter * config.log_every_n_iterations)
 
             with timers.timing('timers/wait_for_rollout'):
                 train_rollout_worker.do_rollout(n_steps=config.env_step_per_iter)
@@ -330,14 +335,15 @@ def main():
 
             if iterations != 0 and iterations % config.log_every_n_iterations == 0:
 
+                metrics.update(timers.collect_times())
+                logger.add_scalars(metrics, step_counter.steps)
+
                 print('=' * 50)
                 for k, v in metrics.items():
                     print(k, v)
                 print('=' * 50)
                 print('\n')
 
-                metrics.update(timers.collect_times())
-                logger.add_scalars(metrics, step_counter.steps)
                 metrics = defaultdict(float)
 
             iterations += 1
