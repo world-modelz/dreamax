@@ -23,19 +23,19 @@ class TrainingLogger:
                 keys.sort()
                 last_first_key = keys[0].split('/')[0]
 
-                print('=' * 60)
-                print(f"|                 env step: {step}")
-                print('=' * 60)
+                print('|' + '=' * 50 + '|')
+                print('|' + f"env step: {step}".center(50, ' ') + '|')
+                print('|' + '=' * 50 + '|')
                 for k in keys:
 
                     if k.split('/')[0] != last_first_key:
                         last_first_key = k.split('/')[0]
-                        print('')
+                        print('|' + ' ' * 50 + '|')
 
-                    print(f"{(k + ':'): <32} {self.scalars_buffer[k]}")
+                    print(f"| {(k + ':'): <32} {round(self.scalars_buffer[k], 5): <15} |")
 
-                print('=' * 60)
-                print('')
+                print('|' + '=' * 50 + '|')
+                print('\n')
 
             for k, v in self.scalars_buffer.items():
                 self.writer.add_scalar(k, float(v), step)
