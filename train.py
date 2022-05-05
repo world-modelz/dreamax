@@ -176,11 +176,9 @@ class RolloutWorker:
             if self.done:
                 rollout_episode_count += 1
 
-                print(f"DONE EPISODE   SUM REWARD: {self.sum_reward}  IN {self.episode_steps} STEPS    RANDOM: {random}")
-
                 if self.is_training and self.logger is not None:
                     metrics = {'env/train/sum_reward': self.sum_reward, 'env/train/episode_len': self.episode_steps}
-                    self.logger.add_scalars(metrics, self.step_counter.steps)
+                    self.logger.add_scalars(metrics)
 
                 episode_summary['steps'] = [self.episode_steps]
                 episodes.append(episode_summary)
@@ -228,7 +226,7 @@ def evaluate(agent, logger, config: DreamerConfiguration, steps, eval_rollout_wo
     evaluation_episodes_summaries = {'env/eval/sum_reward': avg_return,
                                      'env/eval/episode_len': avg_len}
 
-    logger.add_scalars(evaluation_episodes_summaries, steps)
+    logger.add_scalars(evaluation_episodes_summaries)
 
 
 def main():
@@ -330,20 +328,13 @@ def main():
             if config.evaluate_every_n_iterations > 0:
                 if iterations != 0 and iterations % config.evaluate_every_n_iterations == 0:
                     with timers.timing('timers/wait_for_eval'):
-                        print("Evaluating.")
                         evaluate(agent, logger, config, step_counter.steps, eval_rollout_worker)
 
             if iterations != 0 and iterations % config.log_every_n_iterations == 0:
 
                 metrics.update(timers.collect_times())
-                logger.add_scalars(metrics, step_counter.steps)
-
-                print('=' * 50)
-                for k, v in metrics.items():
-                    print(k, v)
-                print('=' * 50)
-                print('\n')
-
+                logger.add_scalars(metrics)
+                logger.flush_scalars(step=step_counter.steps, do_print=True)
                 metrics = defaultdict(float)
 
             iterations += 1
