@@ -315,7 +315,7 @@ def main():
                     with timers.timing('timers/wait_for_data'):
                         sample = next(batch_gen)
 
-                    with timers.timing('timers/update_time'):
+                    with timers.timing('timers/update_step_time'):
                         agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states,
                                                                       key=next(agent.rng_seq))
 
