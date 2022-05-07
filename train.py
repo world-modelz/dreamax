@@ -283,8 +283,9 @@ def main():
     iterations = 0
     metrics = defaultdict(float)
     agent_data_path = Path(config.log_dir, 'agent_data')
-    timers = Timers(['timers/wait_for_data', 'timers/wait_for_rollout', 'timers/wait_for_eval', 'timers/training_time',
-                     'timers/iteration_time'])
+    timers = Timers(['timers/wait_for_data', 'timers/wait_for_rollout', 'timers/wait_for_eval',
+                     'timers/wait_for_logging', 'timers/training_time', 'timers/update_step_time',
+                     'timers/update_step_time', 'timers/iteration_time'])
     step_counter = GlobalStepCounter()
 
     train_rollout_worker = RolloutWorker(config=config, env=environment, agent=agent, step_counter=step_counter,
@@ -307,20 +308,20 @@ def main():
     while step_counter.steps < config.steps:
         with timers.timing('timers/iteration_time'):
 
-            batch_gen = iter(replay_buffer.sample(config.updates_per_iter))
+            with timers.timing('timers/training_time'):
+                batch_gen = iter(replay_buffer.sample(config.updates_per_iter))
+                for _ in range(config.updates_per_iter):
 
-            for _ in range(config.updates_per_iter):
+                    with timers.timing('timers/wait_for_data'):
+                        sample = next(batch_gen)
 
-                with timers.timing('timers/wait_for_data'):
-                    sample = next(batch_gen)
+                    with timers.timing('timers/update_time'):
+                        agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states,
+                                                                      key=next(agent.rng_seq))
 
-                with timers.timing('timers/training_time'):
-                    agent.learning_states, reports = agent.update(dict(sample), *agent.learning_states,
-                                                                  key=next(agent.rng_seq))
-
-                # Average training metrics across update steps.
-                for k, v in reports.items():
-                    metrics[k] += float(v) / (config.updates_per_iter * config.log_every_n_iterations)
+                    # Average training metrics across update steps.
+                    for k, v in reports.items():
+                        metrics[k] += float(v) / (config.updates_per_iter * config.log_every_n_iterations)
 
             with timers.timing('timers/wait_for_rollout'):
                 train_rollout_worker.do_rollout(n_steps=config.env_step_per_iter)
@@ -331,11 +332,11 @@ def main():
                         evaluate(agent, logger, config, step_counter.steps, eval_rollout_worker)
 
             if iterations != 0 and iterations % config.log_every_n_iterations == 0:
-
-                metrics.update(timers.collect_times())
-                logger.add_scalars(metrics)
-                logger.flush_scalars(step=step_counter.steps, do_print=True)
-                metrics = defaultdict(float)
+                with timers.timing('timers/wait_for_logging'):
+                    metrics.update(timers.collect_times())
+                    logger.add_scalars(metrics)
+                    logger.flush_scalars(step=step_counter.steps, do_print=True)
+                    metrics = defaultdict(float)
 
             iterations += 1
 
