@@ -1,4 +1,3 @@
-
 import os
 import argparse
 import json
@@ -85,7 +84,7 @@ def create_agent(config: DreamerConfiguration, environment, logger: TrainingLogg
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--configs', nargs='+', default=['configs/dreamer_v2.json'])
+    parser.add_argument('--configs', nargs='+')
     args = parser.parse_args()
     return args
 
@@ -96,11 +95,12 @@ def main():
     args = parse_args()
 
     config = DreamerConfiguration()
-    for config_path in args.configs:
-        print(f'Loading configuration: "{config_path}"')
-        with open(config_path, 'r') as f:
-            json_config = json.load(f)
-            config.update(json_config, load_with_warning=False)
+    if args.configs:
+        for config_path in args.configs:
+            print(f'Loading configuration: "{config_path}"')
+            with open(config_path, 'r') as f:
+                json_config = json.load(f)
+                config.update(json_config)
 
     np.random.seed(config.seed)
 
