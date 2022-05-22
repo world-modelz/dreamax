@@ -69,7 +69,7 @@ class ActorConfig(OutputHeadConfigBase):
 
 
 class DreamerConfiguration(Dataclass):
-    log_dir: str = "results"
+    log_dir: str = None
     seed: int = 0
     task: str = "pendulum.swingup"
     time_limit: int = 1000

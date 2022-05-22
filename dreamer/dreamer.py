@@ -175,12 +175,12 @@ class Dreamer:
             log_p_terms = terminal.log_prob(batch['terminal']).mean()
             loss_ = self.c.kl_scale * kl - log_p_obs - log_p_rews - log_p_terms
             return loss_, {
-                'agent/model/kl': kl,
-                'agent/model/post_entropy': posterior.entropy().mean(),
-                'agent/model/prior_entropy': prior.entropy().mean(),
-                'agent/model/log_p_observation': -log_p_obs,
-                'agent/model/log_p_reward': -log_p_rews,
-                'agent/model/log_p_terminal': -log_p_terms,
+                'world_model/kl': kl,
+                'world_model/post_entropy': posterior.entropy().mean(),
+                'world_model/prior_entropy': prior.entropy().mean(),
+                'world_model/log_p_obs': -log_p_obs,
+                'world_model/log_p_reward': -log_p_rews,
+                'world_model/log_p_terminal': -log_p_terms,
                 'features': features
             }
 
@@ -236,9 +236,9 @@ class Dreamer:
         new_state = self.actor.grad_step(grads, state)
         entropy = policy.apply(params, features[:, 0]).entropy(seed=key).mean()
         return new_state, {
-            'agent/actor/loss': loss_,
-            'agent/actor/grads': optax.global_norm(grads),
-            'agent/actor/entropy': entropy
+            'agent/actor_loss': loss_,
+            'agent/actor_grads': optax.global_norm(grads),
+            'agent/actor_entropy': entropy
         }, aux
 
     def update_critic(
@@ -258,8 +258,8 @@ class Dreamer:
         (loss_, grads) = jax.value_and_grad(loss)(params)
         new_state = self.critic.grad_step(grads, state)
         return new_state, {
-            'agent/critic/loss': loss_,
-            'agent/critic/grads': optax.global_norm(grads)
+            'agent/critic_loss': loss_,
+            'agent/critic_grads': optax.global_norm(grads)
         }
 
     def save(self, path):

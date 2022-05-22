@@ -82,8 +82,8 @@ def interact(agent, environment, steps, config: DreamerConfiguration, training=T
 def make_summary(summaries, prefix):
     avg_return = np.asarray([sum(episode['reward']) for episode in summaries]).mean()
     avg_len = np.asarray([episode['steps'][0] for episode in summaries]).mean()
-    epoch_summary = {prefix + '/average_return': avg_return,
-                     prefix + '/average_episode_length': avg_len}
+    epoch_summary = {'env/' + prefix + '/sum_reward': avg_return,
+                     'env/' + prefix + '/episode_len': avg_len}
     return epoch_summary
 
 
@@ -101,9 +101,9 @@ def evaluate(agent, train_env, logger, config: DreamerConfiguration, steps):
             agent.model, agent.model.params,
             get_mixed_precision_policy(config.precision)
         )
-        for vid, name in zip(more_vidoes, ('gt', 'infered', 'generated')):
-            logger.log_video(np.array(vid, copy=False).transpose([0, 1, 4, 2, 3]), steps, name='videos/' + name)
-    return make_summary(evaluation_episodes_summaries, 'evaluation')
+        for vid, name in zip(more_vidoes, ('ground_truth', 'reconstructed', 'unroald')):
+            logger.log_video(np.array(vid, copy=False).transpose([0, 1, 4, 2, 3]), steps, name='videos/world_model/' + name)
+    return make_summary(evaluation_episodes_summaries, 'eval')
 
 
 def on_episode_end(episode_summary, logger, global_step, steps_count):
@@ -129,7 +129,7 @@ def train(config: DreamerConfiguration, agent, environment, logger):
                 episode_summary, logger=logger, global_step=steps,
                 steps_count=steps_count))
         steps += training_steps
-        training_summary = make_summary(training_episodes_summaries, 'training')
+        training_summary = make_summary(training_episodes_summaries, 'train')
         if config.evaluation_steps_per_epoch:
             print("Evaluating.")
             evaluation_summaries = evaluate(agent, environment, logger, config, steps)

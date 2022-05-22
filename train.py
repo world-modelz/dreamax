@@ -1,6 +1,7 @@
 import os
 import argparse
 import json
+import datetime
 
 os.environ['MUJOCO_GL'] = "osmesa"
 
@@ -103,6 +104,11 @@ def main():
                 config.update(json_config)
 
     np.random.seed(config.seed)
+
+    if config.log_dir is None:
+        log_dir_path = f'./results/{datetime.datetime.utcnow():%Y-%m-%d_%H%M%S}'
+        print(f"INFO: No log dir was specified, using '{log_dir_path}'")
+        config.log_dir = log_dir_path
 
     if config.platform:
         jax.config.update('jax_platform_name', config.platform)
