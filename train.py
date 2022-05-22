@@ -19,6 +19,8 @@ from dreamer.gym_adapter import create_env
 from dreamer.configuration import DreamerConfiguration
 from train_loop import train
 
+os.environ['MUJOCO_GL'] = "osmesa"
+
 
 def create_model(config, observation_space):
     def model():
@@ -102,7 +104,8 @@ def main():
 
     np.random.seed(config.seed)
 
-    jax.config.update('jax_platform_name', config.platform)
+    if config.platform:
+        jax.config.update('jax_platform_name', config.platform)
 
     print('Available devices:')
     for device in jax.devices():

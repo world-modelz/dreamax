@@ -81,7 +81,7 @@ class DreamerConfiguration(Dataclass):
     train_every: int = 1000
     update_steps: int = 100
     replay: ReplayBufferConfig = ReplayBufferConfig()
-    platform: str = 'gpu'
+    platform: str = None
     jit: bool = True
     render_episodes: int = 0
     evaluate_model: bool = True
