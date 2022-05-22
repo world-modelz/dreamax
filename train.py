@@ -1,9 +1,11 @@
 import os
 import argparse
 import json
+
+os.environ['MUJOCO_GL'] = "osmesa"
+
 import numpy as np
 import gym
-
 import tensorflow as tf
 import jax
 import jax.numpy as jnp
@@ -17,8 +19,6 @@ from dreamer.world_model import Actor, DenseDecoder, Decoder, WorldModel
 from dreamer.gym_adapter import create_env
 from dreamer.configuration import DreamerConfiguration
 from train_loop import train
-
-os.environ['MUJOCO_GL'] = "osmesa"
 
 
 def create_model(config, observation_space):
