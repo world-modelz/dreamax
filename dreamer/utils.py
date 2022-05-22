@@ -15,6 +15,32 @@ def initializer(name: str) -> hk.initializers.Initializer:
     }[name]
 
 
+class Stopwatch:
+    def __init__(self):
+        self.measurements = []
+        self.start()
+
+    def start(self):
+        self.start_time = time.perf_counter()
+
+    def stop(self):
+        elapsed = time.perf_counter() - self.start_time
+        self.measurements.append(elapsed)
+
+    def clear(self):
+        self.measurements.clear()
+
+    @property
+    def last(self):
+        return self.measurements[-1]
+
+    @contextmanager
+    def measure(self):
+        self.start()
+        yield
+        self.stop()
+
+
 class Timers:
 
     def __init__(self, timers: Union[List[str], Tuple[str]]):
